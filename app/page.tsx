@@ -2,18 +2,21 @@
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 
-type View = "actions" | "portfolio" | "cash" | "signals" | "data" | "release" | "blueprint";
+type View = "actions" | "operations" | "portfolio" | "cash" | "signals" | "data" | "release" | "blueprint";
 type ImportType = "ip" | "ledger";
 type ImportStage = "select" | "preview" | "done";
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type ImportRow = Record<string, string | number | boolean | null>;
+type DecisionIssue = {
+  id: string; level: "高" | "中"; title: string; summary: string; owner: string; due: string;
+  state: string; impact: string; evidence: string[]; assumptions: string[];
+  options: { name: string; result: string; time: string; cash: string; risk: string; recommended?: boolean }[];
+};
 
-const actions = [
-  { date: "09.10", type: "付款", title: "纽卡斯尔授权费", detail: "¥1,220,000 · 待财务确认", tone: "red" },
-  { date: "09.20", type: "签名", title: "AC 米兰球员第二批签名", detail: "缺口 120 份 · 影响限量签名系列", tone: "amber" },
-  { date: "09.30", type: "启动", title: "浴血黑帮首批演员确认", detail: "人物清单已建立 · 签名计划待启动", tone: "amber" },
-  { date: "10.15", type: "验收", title: "AC 米兰第三批资源验收", detail: "计划 250 份 · 负责人待确认", tone: "blue" },
-  { date: "11.18", type: "续约", title: "AC 米兰进入续约准备窗口", detail: "建议开始复盘授权使用与销售表现", tone: "blue" },
+const decisionIssues: DecisionIssue[] = [
+  { id:"acm-signature", level:"高", title:"AC 米兰签名缺口可能影响限量系列发行", summary:"第二批签名仍缺 120 份。运营已完成代理催办，继续等待可能压缩设计与生产窗口。", owner:"发行运营 · 林乔", due:"今天 18:00", state:"等待老板决策", impact:"约 800 张产品 · 预计上市窗口 9 月下旬", evidence:["签名台账：目标 300，已收 180","代理回复：最快 9 月 18 日确认","供应商锁产窗口：9 月 22 日"], assumptions:["人物组合可在卡面终审前调整","拆批不会触发最低发行量条款"], options:[{name:"继续等待原签名",result:"保持原人物组合",time:"可能延迟 14 天",cash:"无新增成本",risk:"中高"},{name:"调整人物组合",result:"保住原发行窗口",time:"按期",cash:"预计影响收入 -3%",risk:"中",recommended:true},{name:"拆分两批发行",result:"首批按期上市",time:"延迟 3 天",cash:"增加成本 ¥8万",risk:"低"}] },
+  { id:"nufc-payment", level:"高", title:"纽卡斯尔 122 万授权费需要付款取舍", summary:"按期付款有利于续约关系，但未来 90 天现金余量将接近内部安全线。", owner:"财务 · 王雯", due:"9 月 8 日", state:"等待财务确认", impact:"未来 90 天现金安全余量", evidence:["合同付款日：9 月 10 日","当前资料完整度：80%","验收确认仍缺 1 份"], assumptions:["分期需要版权方书面同意","AC 米兰新品预算保持不变"], options:[{name:"按期全额付款",result:"保障合同履约",time:"按期",cash:"支出 ¥122万",risk:"低"},{name:"申请两期支付",result:"保留新品预算",time:"需 3 天沟通",cash:"本期减少 ¥61万",risk:"中",recommended:true}] },
+  { id:"pb-launch", level:"中", title:"《浴血黑帮》首批演员签名计划尚未启动", summary:"人物清单已建立，但优先级、代理联络和预算边界仍未确认。", owner:"IP 运营 · 周宁", due:"9 月 30 日", state:"运营可自行处理", impact:"首批产品立项与人物资源锁定", evidence:["已录入 21 位主要演员","尚无签名目标数量","预算待业务负责人确认"], assumptions:["首批产品聚焦 6–8 位核心人物"], options:[{name:"先锁定核心 6 人",result:"快速形成首发组合",time:"本周启动",cash:"预算可控",risk:"低",recommended:true},{name:"全名单同步询价",result:"获得完整成本视图",time:"增加 2 周",cash:"待报价",risk:"中"}] }
 ];
 
 const baseIps = [
@@ -38,7 +41,8 @@ const acPlayers = [
 ];
 
 const nav: { id: View; label: string; icon: string }[] = [
-  { id: "actions", label: "行动中心", icon: "⌁" },
+  { id: "actions", label: "老板总控台", icon: "⌁" },
+  { id: "operations", label: "运营 AI 工作台", icon: "✦" },
   { id: "portfolio", label: "IP 组合", icon: "◫" },
   { id: "cash", label: "账目与现金", icon: "¥" },
   { id: "signals", label: "IP 变动雷达", icon: "◎" },
@@ -66,12 +70,16 @@ export default function Home() {
   const [collapsed, setCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
+  const [agentFocus, setAgentFocus] = useState("当前经营全局");
+  const [selectedDecisionId, setSelectedDecisionId] = useState(decisionIssues[0].id);
+  const [approvedDecisions, setApprovedDecisions] = useState<string[]>([]);
   const [importOpen, setImportOpen] = useState(false);
   const [importType, setImportType] = useState<ImportType>("ip");
   const [importedIps, setImportedIps] = useState<typeof baseIps>([]);
   const [importedLedgers, setImportedLedgers] = useState<ImportRow[]>([]);
   const openImport = (type: ImportType) => { setImportType(type); setImportOpen(true); };
   const allIps = [...baseIps, ...importedIps];
+  const openAgent = (focus: string) => { setAgentFocus(focus); setAgentOpen(true); };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -85,23 +93,24 @@ export default function Home() {
   return <main className={`app-shell ${collapsed ? "is-collapsed" : ""}`}>
     <aside className="sidebar">
       <div className="brand"><span>D</span><strong>DAKA CONTROL</strong><button className="collapse-button" aria-label={collapsed ? "展开侧栏" : "折叠侧栏"} onClick={() => setCollapsed(v => !v)}>{collapsed ? "›" : "‹"}</button></div>
-      <div className="workspace-badge"><i>DEMO</i><span>老板演示空间</span></div>
+      <div className="workspace-badge"><i>v1.1</i><span>决策闭环演示</span></div>
       <nav aria-label="主导航">{nav.map((item) => <button key={item.id} title={item.label} onClick={() => setView(item.id)} className={`nav-item ${view === item.id ? "active" : ""}`}><b>{item.icon}</b><span>{item.label}</span>{item.id === "signals" && <em>3</em>}</button>)}</nav>
-      <div className="sidebar-bottom"><button className="agent-launch" onClick={() => setAgentOpen(true)}><span>✦</span><div><b>GLM 经营 Agent</b><small>读取当前经营上下文</small></div></button><button className="settings-button" onClick={() => setSettingsOpen(true)}><span>⚙</span><div><b>设置</b><small>模型、数据源与偏好</small></div></button></div>
+      <div className="sidebar-bottom"><button className="agent-launch" onClick={() => openAgent("当前经营全局")}><span>✦</span><div><b>GLM 经营 Agent</b><small>讨论方案与经营影响</small></div></button><button className="settings-button" onClick={() => setSettingsOpen(true)}><span>⚙</span><div><b>设置</b><small>模型、数据源与偏好</small></div></button></div>
     </aside>
     <section className="workspace">
       <div className="utility-bar"><button className="mobile-menu" onClick={() => setCollapsed(v => !v)}>☰</button><div><span className="system-dot" />数据已同步 <b>2 分钟前</b></div><button className="quick-import" onClick={() => openImport("ip")}>＋ 导入数据</button><button className="avatar">FC</button></div>
-      {view === "actions" && <ActionCenter onAsk={() => setAgentOpen(true)} onOpenIP={() => setView("portfolio")} onSignals={() => setView("signals")} />}
+      {view === "actions" && <BossControl selectedId={selectedDecisionId} approved={approvedDecisions} onSelect={setSelectedDecisionId} onApprove={id => setApprovedDecisions(prev => prev.includes(id) ? prev : [...prev,id])} onAsk={openAgent} onOperations={() => setView("operations")} />}
+      {view === "operations" && <OperationsWorkbench approved={approvedDecisions} onEscalate={(id) => { setSelectedDecisionId(id); setView("actions"); }} onAsk={openAgent} />}
       {view === "portfolio" && <Portfolio ips={allIps} onImport={() => openImport("ip")} onOpenIP={() => setView("release")} />}
       {view === "cash" && <CashDashboard onImport={() => openImport("ledger")} importedRows={importedLedgers} />}
-      {view === "signals" && <SignalRadar onAsk={() => setAgentOpen(true)} />}
+      {view === "signals" && <SignalRadar onAsk={() => openAgent("Rafael Leão 外部变动及其发行影响")} />}
       {view === "data" && <DataCenter onImport={openImport} />}
       {view === "release" && <Release onBlueprint={() => setView("blueprint")} />}
       {view === "blueprint" && <Blueprint />}
       <footer>DAKA AI 经营控制塔 · 新闻与经营数字均明确标记演示属性，不构成真实业务事实</footer>
     </section>
     {importOpen && <ImportDrawer type={importType} onType={setImportType} onClose={() => setImportOpen(false)} onImported={(rows) => { if (importType === "ip") setImportedIps(prev => [...prev, ...rowsToIps(rows, Math.max(0, 20 - allIps.length))]); else setImportedLedgers(prev => [...prev, ...rows]); }} />}
-    {agentOpen && <AgentDrawer view={view} onClose={() => setAgentOpen(false)} />}
+    {agentOpen && <AgentDrawer view={view} focus={agentFocus} onClose={() => setAgentOpen(false)} />}
     {settingsOpen && <SettingsDrawer onClose={() => setSettingsOpen(false)} />}
   </main>;
 }
@@ -110,8 +119,24 @@ function PageHeader({ eyebrow, title, sub, actions }: { eyebrow: string; title: 
   return <header className="topbar"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="subtitle">{sub}</p></div><div className="topbar-actions">{actions}<div className="demo-chip"><i />公开演示空间</div></div></header>;
 }
 
-function ActionCenter({ onAsk, onOpenIP, onSignals }: { onAsk: () => void; onOpenIP: () => void; onSignals: () => void }) {
-  return <><PageHeader eyebrow="经营控制塔 · 2026 Q3" title="未来 90 天，你有 5 项关键经营行动" sub="其中 2 个问题可能影响下一季发行。系统已按影响程度排序。" /><div className="summary-grid"><article className="summary dark"><small>已纳入管理</small><strong>3 <i>/ 20 IP</i></strong><p>新增 IP 可通过数据中心导入</p></article><article className="summary"><small>未来 90 天付款</small><strong>¥168万</strong><p>2 个付款节点</p></article><article className="summary"><small>签名资源完成率</small><strong>68%</strong><p>3 人需要跟进</p></article><article className="summary risk"><small>发行风险</small><strong>2 项</strong><p>可能影响下一季</p></article></div><div className="content-grid"><section className="panel action-panel"><div className="panel-head"><div><span>按经营影响排序</span><h2>关键行动日历</h2></div><button>查看 90 天日历 →</button></div><div className="action-list">{actions.map((a) => <button className="action" key={a.date+a.title} onClick={a.title.includes("AC 米兰") ? onOpenIP : undefined}><time>{a.date}</time><span className={`status ${a.tone}`}>{a.type}</span><div><h3>{a.title}</h3><p>{a.detail}</p></div><b>→</b></button>)}</div></section><aside className="panel ai-panel"><div className="ai-label">✦ GLM 经营判断</div><h2>先处理 AC 米兰的签名缺口</h2><p>若 9 月 20 日前未确认第二批签名，预计影响约 800 张限量卡的发行准备，并压缩设计与生产窗口。</p><div className="impact"><span>影响项目</span><strong>2026 限量签名系列</strong><span>建议动作</span><strong>今天确认代理与球员档期</strong></div><button className="ask" onClick={onAsk}>向 Agent 追问依据 →</button></aside></div><section className="panel signal-strip"><div><p className="eyebrow">外部变化感知</p><h2>今天发现 3 条与现有 IP 相关的信号</h2><p>1 条高影响人物变动需要人工确认；系统不会用新闻直接覆盖人物主档。</p></div><div className="signal-mini"><b>Rafael Leão</b><span>可能的阵容变动</span><em>高影响</em></div><div className="signal-mini"><b>Anthony Gordon</b><span>合同状态更新</span><em className="medium">中影响</em></div><button onClick={onSignals}>进入变动雷达 →</button></section></>;
+function BossControl({ selectedId, approved, onSelect, onApprove, onAsk, onOperations }: { selectedId:string; approved:string[]; onSelect:(id:string)=>void; onApprove:(id:string)=>void; onAsk:(focus:string)=>void; onOperations:()=>void }) {
+  const item = decisionIssues.find(issue => issue.id === selectedId) || decisionIssues[0];
+  const done = approved.includes(item.id);
+  return <><PageHeader eyebrow="老板经营总控 · DECISION CONTROL" title="今天有 2 项需要你拍板" sub="AI 与团队已处理日常跟进；这里只保留影响收入、现金、交期或品牌的例外事项。" actions={<button className="role-jump" onClick={onOperations}>切换到运营工作台 →</button>} />
+    <div className="decision-metrics"><article><small>需要老板决定</small><strong>{Math.max(0,2-approved.length)}</strong><p>1 项今天到期</p></article><article><small>已授权团队处理</small><strong>{7+approved.length}</strong><p>AI 持续追踪</p></article><article><small>等待外部确认</small><strong>4</strong><p>无需现在介入</p></article><article className="ai-proof"><small>本周 AI 已代办</small><strong>26</strong><p>预计节省 11.5 小时</p></article></div>
+    <div className="decision-layout"><section className="panel decision-inbox"><div className="panel-head"><div><span>DECISION INBOX</span><h2>需要介入的经营事项</h2></div><em>按经营影响排序</em></div>{decisionIssues.map(issue=><button key={issue.id} className={`decision-row ${selectedId===issue.id?"selected":""}`} onClick={()=>onSelect(issue.id)}><span className={`decision-level level-${issue.level}`}>{issue.level}</span><div><small>{approved.includes(issue.id)?"已完成决策":issue.state} · {issue.due}</small><h3>{issue.title}</h3><p>{issue.impact}</p></div><b>{approved.includes(issue.id)?"✓":"→"}</b></button>)}</section>
+      <section className="panel decision-detail"><div className="decision-title"><div><span className={`decision-level level-${item.level}`}>{item.level}影响</span><small>{done?"已批准并返回运营执行":item.state}</small></div><h2>{item.title}</h2><p>{item.summary}</p></div><div className="decision-owner"><span>当前责任人</span><b>{item.owner}</b><span>必须处理</span><b>{item.due}</b></div><div className="decision-tabs"><span>方案比较</span><span>依据 {item.evidence.length}</span><span>假设 {item.assumptions.length}</span></div><div className="option-grid">{item.options.map(option=><article key={option.name} className={option.recommended?"recommended":""}>{option.recommended&&<em>AI + 运营推荐</em>}<h3>{option.name}</h3><p>{option.result}</p><dl><dt>上市时间</dt><dd>{option.time}</dd><dt>现金 / 收入</dt><dd>{option.cash}</dd><dt>风险</dt><dd>{option.risk}</dd></dl></article>)}</div><details className="decision-evidence"><summary>查看判断依据与关键假设</summary><div><section><b>已确认依据</b>{item.evidence.map(x=><p key={x}>✓ {x}</p>)}</section><section><b>仍需验证的假设</b>{item.assumptions.map(x=><p key={x}>△ {x}</p>)}</section></div></details><div className="decision-actions"><button onClick={()=>onAsk(`${item.title}：请比较当前方案并解释关键假设`)}>与 Agent 讨论方案</button><button className="primary" disabled={done} onClick={()=>onApprove(item.id)}>{done?"✓ 已生成运营行动":"批准推荐方案"}</button></div></section></div></>;
+}
+
+function OperationsWorkbench({ approved, onEscalate, onAsk }: { approved:string[]; onEscalate:(id:string)=>void; onAsk:(focus:string)=>void }) {
+  const acApproved = approved.includes("acm-signature");
+  return <><PageHeader eyebrow="发行运营 · AI WORKBENCH" title="AI 已完成初步处理，等待你确认 4 项" sub="运营处理事实核对、日常推进与升级；超过权限阈值的事项才进入老板决策收件箱。" actions={<div className="operator-chip"><span>LQ</span><div><b>林乔</b><small>发行运营负责人</small></div></div>} />
+    <div className="ops-stats"><article><span>AI 已完成，待确认</span><b>4</b></article><article><span>需要补充信息</span><b>3</b></article><article><span>需要升级老板</span><b>{acApproved?1:2}</b></article><article><span>今日已自动推进</span><b>12</b></article></div>
+    <div className="ops-layout"><section className="panel ops-queue"><div className="panel-head"><div><span>AI REVIEW QUEUE</span><h2>等待运营确认</h2></div><button>筛选：全部</button></div>
+      <article className="ops-item urgent"><div className="ops-item-top"><span>需要升级老板</span><small>8 分钟前</small></div><h3>AC 米兰第二批签名缺口 120 份</h3><p>AI 已核对签名台账、代理回复和供应商锁产时间，判断超出运营可调整范围。</p><div className="ai-worklog"><b>✦ AI 已完成</b><span>核对 6 位人物进度</span><span>匹配 1 个在途项目</span><span>生成 3 套方案</span></div><div className="ops-buttons"><button onClick={()=>onAsk("AC 米兰签名缺口：帮助运营检查升级材料是否完整")}>检查 AI 依据</button><button className="primary" onClick={()=>onEscalate("acm-signature")}>{acApproved?"查看老板决定":"升级老板决策"}</button></div></article>
+      <article className="ops-item"><div className="ops-item-top"><span className="auto">可由运营确认</span><small>21 分钟前</small></div><h3>浴血黑帮首批演员联络顺序</h3><p>AI 建议先锁定 6 位核心人物，并已按角色重要度与公开热度生成联络顺序。</p><div className="ai-worklog"><b>✦ AI 已完成</b><span>整理 21 位演员</span><span>标记 6 位核心人物</span><span>起草代理询价邮件</span></div><div className="ops-buttons"><button>查看草稿</button><button className="primary">确认并发送</button></div></article>
+      <article className="ops-item"><div className="ops-item-top"><span className="missing">缺少信息</span><small>今天 09:10</small></div><h3>AC 米兰第三批资源验收</h3><p>系统缺少验收负责人，无法自动创建 10 月 15 日检查点。</p><div className="ops-buttons"><button>补充负责人</button><button>暂缓处理</button></div></article></section>
+      <aside className="ops-side"><section className="panel"><div className="panel-head"><div><span>AGENT ACTIVITY</span><h2>AI 今天替你做了什么</h2></div></div>{[["09:42","核对 AC 米兰签名台账","6 人"],["09:31","匹配外部人物变化","3 条"],["09:18","提取合同付款节点","2 项"],["08:55","生成催办邮件草稿","4 封"]].map(x=><div className="activity-row" key={x[0]}><time>{x[0]}</time><div><b>{x[1]}</b><small>{x[2]}</small></div><span>✓</span></div>)}</section><section className="panel boundary-card"><p className="eyebrow">DECISION RIGHTS</p><h2>什么情况必须升级？</h2><ul><li>影响发行日期超过 7 天</li><li>新增成本超过 ¥5 万</li><li>变更核心人物或产品定位</li><li>付款与合同条款发生变化</li></ul><button onClick={()=>onAsk("请解释当前运营升级老板的决策权限规则")}>让 Agent 解释边界 →</button></section></aside></div></>;
 }
 
 function Portfolio({ ips, onImport, onOpenIP }: { ips: typeof baseIps; onImport: () => void; onOpenIP: () => void }) {
@@ -153,9 +178,9 @@ function ImportDrawer({ type, onType, onClose, onImported }: { type: ImportType;
   return <div className="drawer-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}><aside className="drawer import-drawer"><div className="drawer-head"><div><p className="eyebrow">DATA IMPORT</p><h2>{type === "ip" ? "导入新 IP" : "导入账目"}</h2></div><button onClick={onClose} aria-label="关闭">×</button></div><div className="stepper"><span className={stage!=="select"?"done":"active"}>1 选择文件</span><i /><span className={stage==="preview"?"active":stage==="done"?"done":""}>2 校验预览</span><i /><span className={stage==="done"?"active":""}>3 导入回执</span></div>{stage==="select"&&<><div className="type-switch"><button className={type==="ip"?"selected":""} onClick={()=>onType("ip")}>IP 主档</button><button className={type==="ledger"?"selected":""} onClick={()=>onType("ledger")}>账目</button></div><button className="drop-zone" onClick={()=>inputRef.current?.click()} disabled={busy}><span>⇧</span><h3>{busy?"正在读取文件…":"选择或拖入数据文件"}</h3><p>支持 CSV、XLSX、XLS、JSON · 单次最多 500 行 / 5 MB</p></button><input ref={inputRef} hidden type="file" accept=".csv,.xlsx,.xls,.json" onChange={(e:ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0]; if(f) void parseFile(f);}}/><div className="template-box"><b>{type==="ip"?"IP 模板必填字段":"账目模板必填字段"}</b><code>{type==="ip"?"name, code, kind, contract, owner":"ip, amount, date, category, status"}</code><button>下载模板</button></div></>}{stage==="preview"&&<><div className="file-summary"><span className="file-icon">{file?.name.split(".").pop()?.toUpperCase()}</span><div><b>{file?.name}</b><small>{rows.length} 行 · {headers.length} 个已识别字段</small></div><button onClick={()=>setStage("select")}>更换文件</button></div><div className={`validation-banner ${missing.length?"warning":"success"}`}><b>{missing.length?"需要确认字段映射":"格式校验通过"}</b><span>{missing.length?`未自动识别：${missing.join("、")}；仍可作为演示数据导入。`:`${rows.length} 行可写入，未发现重复主键。`}</span></div><div className="preview-table"><div className="preview-row head">{headers.map(h=><span key={h}>{h}</span>)}</div>{rows.slice(0,5).map((row,i)=><div className="preview-row" key={i}>{headers.map(h=><span key={h}>{String(row[h] ?? "—")}</span>)}</div>)}</div><p className="preview-note">当前显示前 {Math.min(5,rows.length)} 行；确认后原始文件和逐行结果会写入审计回执。</p><button className="primary full large" disabled={busy} onClick={()=>void commit()}>{busy?"正在安全写入…":`确认导入 ${rows.length} 行`}</button></>}{stage==="done"&&<div className="receipt"><span>✓</span><p className="eyebrow">IMPORT COMPLETE</p><h2>数据已进入演示空间</h2><p>系统已保存原始文件、结构化记录与逐行审计结果。</p><dl><dt>回执编号</dt><dd>{receipt}</dd><dt>导入对象</dt><dd>{type==="ip"?"IP 主档":"账目"}</dd><dt>成功记录</dt><dd>{rows.length} 行</dd></dl><button className="primary full" onClick={onClose}>完成</button></div>}{error&&<div className="error-banner">{error}</div>}</aside></div>;
 }
 
-function AgentDrawer({ view, onClose }: { view: View; onClose: () => void }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([{role:"assistant",content:"我是 DAKA 经营 Agent。我会基于当前 Demo 的 IP、账目、人物变动和发行上下文回答，并明确区分事实、演示数据与建议。"}]); const [input, setInput] = useState(""); const [busy,setBusy]=useState(false); const [error,setError]=useState(""); const suggestions=["未来 90 天最重要的三件事是什么？","Rafael Leão 的变动会影响哪些项目？","解释 9 月付款压力并给出动作建议"];
-  const submit = async (e?:FormEvent) => { e?.preventDefault(); const question=input.trim(); if(!question||busy)return; const next=[...messages,{role:"user" as const,content:question}]; setMessages(next); setInput(""); setBusy(true); setError(""); const controller=new AbortController(); const timeout=setTimeout(()=>controller.abort(),30000); try{const response=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({messages:next,context:{view,workspace:"公开演示空间",ipCount:3,alerts:2,next90DaysPayable:"168万元"}}),signal:controller.signal}); const data:{content?:string;error?:string}=await response.json(); if(!response.ok||!data.content)throw new Error(data.error||"Agent 暂时不可用"); setMessages(prev=>[...prev,{role:"assistant",content:data.content!}]);}catch(e){setError(e instanceof DOMException&&e.name==="AbortError"?"请求超过 30 秒，请稍后重试。":e instanceof Error?e.message:"Agent 请求失败");}finally{clearTimeout(timeout);setBusy(false);}};
+function AgentDrawer({ view, focus, onClose }: { view: View; focus: string; onClose: () => void }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([{role:"assistant",content:`我是 DAKA 经营 Agent。当前讨论上下文：${focus}。我会区分事实、假设与建议，并优先比较方案及其经营影响。`}]); const [input, setInput] = useState(""); const [busy,setBusy]=useState(false); const [error,setError]=useState(""); const suggestions=["比较当前方案的收入、时间与风险","哪些假设尚未验证？","批准后应生成哪些行动？"];
+  const submit = async (e?:FormEvent) => { e?.preventDefault(); const question=input.trim(); if(!question||busy)return; const next=[...messages,{role:"user" as const,content:question}]; setMessages(next); setInput(""); setBusy(true); setError(""); const controller=new AbortController(); const timeout=setTimeout(()=>controller.abort(),30000); try{const response=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({messages:next,context:{view,focus,workspace:"公开演示空间",ipCount:3,alerts:2,next90DaysPayable:"168万元"}}),signal:controller.signal}); const data:{content?:string;error?:string}=await response.json(); if(!response.ok||!data.content)throw new Error(data.error||"Agent 暂时不可用"); setMessages(prev=>[...prev,{role:"assistant",content:data.content!}]);}catch(e){setError(e instanceof DOMException&&e.name==="AbortError"?"请求超过 30 秒，请稍后重试。":e instanceof Error?e.message:"Agent 请求失败");}finally{clearTimeout(timeout);setBusy(false);}};
   return <div className="drawer-backdrop"><aside className="drawer agent-drawer"><div className="drawer-head"><div><p className="eyebrow">GLM BUSINESS AGENT</p><h2><i className="online-dot" />经营分析助手</h2></div><button onClick={onClose} aria-label="关闭">×</button></div><div className="agent-context"><span>已读取</span><b>当前页面 · 3 个 IP · 5 项行动 · 3 条外部信号</b></div><div className="messages">{messages.map((m,i)=><div key={i} className={`message ${m.role}`}><small>{m.role==="assistant"?"DAKA AGENT":"你"}</small><p>{m.content}</p></div>)}{busy&&<div className="message assistant loading"><small>DAKA AGENT</small><p><i/><i/><i/></p></div>}</div>{messages.length===1&&<div className="suggestions">{suggestions.map(s=><button key={s} onClick={()=>setInput(s)}>{s}</button>)}</div>}{error&&<div className="error-banner">{error}</div>}<form className="agent-input" onSubmit={submit}><textarea value={input} onChange={e=>setInput(e.target.value)} placeholder="询问风险、付款、人物变动或发行影响…" rows={3}/><div><span>答案由 GLM 生成，请核对重要经营事实</span><button disabled={!input.trim()||busy}>发送 ↑</button></div></form></aside></div>;
 }
 
