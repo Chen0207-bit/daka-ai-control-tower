@@ -129,6 +129,16 @@ export default function Home() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const resetDemoApprovals = () => {
+      setApprovedDecisions([]);
+      setSelectedDecisionId(decisionIssues[0].id);
+    };
+    resetDemoApprovals();
+    window.addEventListener("pageshow", resetDemoApprovals);
+    return () => window.removeEventListener("pageshow", resetDemoApprovals);
+  }, []);
+
   return <main className={`app-shell ${collapsed ? "is-collapsed" : ""}`}>
     <aside className="sidebar">
       <div className="brand"><span>D</span><strong>DAKA CONTROL <small>v1.2</small></strong><button className="collapse-button" aria-label={collapsed ? "展开侧栏" : "折叠侧栏"} onClick={() => setCollapsed(v => !v)}>{collapsed ? "›" : "‹"}</button></div>
