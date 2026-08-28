@@ -53,3 +53,10 @@
 .loop-note{font-size:8.5px;color:var(--muted);line-height:1.7;margin:13px 0 0}
 .gray-dot{background:#8a93a6}
 @media(max-width:1000px){.mg-grid,.sku-grid{grid-template-columns:1fr}.leverage-strip{grid-template-columns:repeat(3,1fr)}.leverage-strip p{grid-column:1/-1}}
+/* v1.2.2 交互升级：MG 建议动作可点击、Agent 快捷指令常驻 */
+.mg-card .mg-action{border:0;font-family:inherit;cursor:pointer;transition:background .15s,color .15s}
+.mg-card .mg-action:hover{background:#315e4d;color:#fff}
+.suggestions.compact{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;align-items:center}
+.suggestions.compact b{font-size:8px;color:var(--muted);margin-right:2px}
+.suggestions.compact button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 9px;font-size:9px;color:#4e5b53;cursor:pointer}
+.suggestions.compact button:hover{border-color:#315e4d;color:#315e4d}
