@@ -2,6 +2,13 @@
   "name": "daka-ai-control-tower",
   "version": "1.2.0",
   "private": true,
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
+  },
   "engines": {
     "node": ">=22.13.0"
   },

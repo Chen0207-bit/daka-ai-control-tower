@@ -4,7 +4,7 @@ import handler from "vinext/server/app-router-entry";
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
-  UPLOADS: R2Bucket;
+  UPLOADS?: R2Bucket;
   GLM_API_KEY?: string;
   GLM_MODEL?: string;
   IMAGES: {
@@ -144,7 +144,8 @@ async function handleImport(request: Request, env: Env): Promise<Response> {
   const receipt = `IMP-${new Date().toISOString().slice(0,10).replaceAll("-","")}-${crypto.randomUUID().slice(0,8).toUpperCase()}`;
   const createdAt = new Date().toISOString(); const safeName = file.name.replace(/[^\p{L}\p{N}._-]/gu, "_").slice(0, 120); const key = `${workspace}/${createdAt.slice(0,10)}/${receipt}/${safeName}`;
   try {
-    await env.UPLOADS.put(key, file.stream(), { httpMetadata: { contentType: file.type || "application/octet-stream" }, customMetadata: { workspaceId: workspace, importType: type, receipt } });
+    // R2 可选:未绑定或写入失败时跳过存档,保证数据仍写入 D1 (public demo 未开通 R2)
+    try { await env.UPLOADS?.put(key, file.stream(), { httpMetadata: { contentType: file.type || "application/octet-stream" }, customMetadata: { workspaceId: workspace, importType: type, receipt } }); } catch (e) { console.warn(JSON.stringify({ event: "r2_put_skipped", error: e instanceof Error ? e.message : String(e) })); }
     const d1 = env.DB;
     await d1.batch(schemaStatements.map(statement => d1.prepare(statement)));
     const statements = [d1.prepare("INSERT INTO import_jobs (id, workspace_id, object_type, file_name, file_key, row_count, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(receipt, workspace, type, file.name.slice(0,180), key, rows.length, "completed", createdAt), ...rows.map((row, index) => d1.prepare("INSERT INTO import_rows (id, job_id, workspace_id, source_row, record_json, validation_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(crypto.randomUUID(), receipt, workspace, index + 2, JSON.stringify(row).slice(0, 20_000), "accepted", createdAt)), d1.prepare("INSERT INTO audit_logs (id, workspace_id, action, object_type, object_id, detail_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(crypto.randomUUID(), workspace, "import_completed", type, receipt, JSON.stringify({ fileName: file.name, rowCount: rows.length, fileKey: key }), createdAt)];
