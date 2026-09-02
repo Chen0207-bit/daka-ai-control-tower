@@ -10,11 +10,16 @@ pnpm ontology:compile           # 编译 Canonical IR 并写 ontology/.generated
 pnpm ontology:check-generated   # CI 用：生成物漂移检查（漂移 exit 1）
 pnpm ontology:inspect           # IR 摘要与指纹
 pnpm ontology:diff -- <old> <new>   # 兼容性分级（参数可为 schema 目录或 manifest.json）
+pnpm seed:demo:dry              # demo Data Pack 校验+导入计划（dry-run，不写库，无需 DATABASE_URL）
 ```
+
+> 退出码契约：`validate` 0/1/2（通过/有 error/运行错误）；`diff` 无变更=0、breaking=1；
+> `compile`/`inspect`/`seed:demo:dry` 成功=0；`check-generated` 漂移=1。
+> 根 `ontology:*` 脚本通过 `pnpm --filter @daka/ontology-dsl run <cmd>` 转发，`diff`/`seed` 的路径参数相对 `packages/ontology-dsl`，指回仓库根用 `../../` 前缀。
 
 ## 变更演练示例（diff 分级）
 
-在分支上修改 `ontology/schema/v1/`，然后 `pnpm ontology:diff -- ontology/.generated/ontology.manifest.json ontology/schema/v1`：
+在分支上修改 `ontology/schema/v1/`，然后 `pnpm ontology:diff -- ../../ontology/.generated/ontology.manifest.json ../../ontology/schema/v1`：
 
 | 变更例子 | 结果 |
 |---|---|

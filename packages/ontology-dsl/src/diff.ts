@@ -1,4 +1,4 @@
-import type { CanonicalIR, IRAction, IRProperty } from "./ir";
+import { stableStringify, type CanonicalIR, type IRAction, type IRProperty } from "./ir";
 
 /**
  * 兼容性分析（spec §12）。
@@ -107,7 +107,7 @@ function diffActions(out: OntologyChange[], base: Record<string, IRAction>, targ
     if (b.target !== t.target) {
       push(out, "breaking", "action-target-changed", `actions.${id}.target`, `target ${b.target} → ${t.target}`);
     }
-    if (JSON.stringify([...b.preconditions]) !== JSON.stringify([...t.preconditions])) {
+    if (stableStringify(b.preconditions) !== stableStringify(t.preconditions)) {
       push(out, "breaking", "action-preconditions-changed", `actions.${id}.preconditions`, "前置条件变化（行为契约改变）");
     }
     const removedRoles = b.actorRoles.filter((r) => !t.actorRoles.includes(r));
@@ -215,7 +215,7 @@ export function diffIR(base: CanonicalIR, target: CanonicalIR): DiffResult {
       const t = (targetMap as Record<string, unknown>)[id];
       if (!t) {
         push(out, "breaking", `${section}-removed`, `${section}.${id}`, `${section} 条目被删除`);
-      } else if (JSON.stringify(b) !== JSON.stringify(t)) {
+      } else if (stableStringify(b) !== stableStringify(t)) {
         push(out, "breaking", `${section}-changed`, `${section}.${id}`, `${section} 条目内容变化（行为契约）`);
       }
     }

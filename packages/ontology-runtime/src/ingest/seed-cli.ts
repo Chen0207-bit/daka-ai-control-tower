@@ -10,11 +10,6 @@ import { materializeFindings, runRules } from "../rules/runner";
  * 用法: DATABASE_URL=... tsx src/ingest/seed-cli.ts [--dry-run]
  */
 async function main(): Promise<number> {
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    process.stderr.write("DATABASE_URL 未设置\n");
-    return 2;
-  }
   const dryRun = process.argv.includes("--dry-run");
   const root = fileURLToPath(new URL("../../../..", import.meta.url));
   const manifest = loadManifest(`${root}/ontology/.generated/ontology.manifest.json`);
@@ -33,6 +28,11 @@ async function main(): Promise<number> {
     return 0;
   }
 
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    process.stderr.write("DATABASE_URL 未设置\n");
+    return 2;
+  }
   const pool = createPool(url);
   try {
     const applied = await applyDataPack(pool, manifest, pack);

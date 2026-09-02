@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { diffIR, type ChangeClass } from "../src/diff";
-import { buildCanonicalIR, type CanonicalIR } from "../src/ir";
+import { buildCanonicalIR, stableStringify, type CanonicalIR } from "../src/ir";
 import { mergeSchemaFiles } from "../src/model";
 import { loadSchemaDir } from "../src/parse";
 import { runCli } from "../src/commands";
@@ -135,5 +135,47 @@ describe("diff 兼容性分级", () => {
     expect(runCli(["diff", aDir, aDir])).toBe(0);
     expect(runCli(["diff", aDir, bDir])).toBe(0); // additive
     expect(runCli(["diff", bDir, aDir])).toBe(1); // breaking
+  });
+
+  it("schema↔manifest 往返不误报 breaking（嵌套对象键序归一）", () => {
+    // manifest 由 stableStringify 深排序写出，加载后嵌套对象键序与 authoring 序不同；
+    // 此前 JSON.stringify 逐键比较会把 connectors/policies/rules/projections 全部误报 breaking。
+    const base = irOf({
+      "meta.yaml": META,
+      "a.yaml": [
+        "objectTypes:",
+        "  C:",
+        "    properties:",
+        "      id: {type: uuid}",
+        "rules:",
+        "  r1:",
+        "    severity: high",
+        "    scope: [C]",
+        "    when:",
+        "      op: all", // authoring 序 op 在 args 前，非字典序
+        "      args:",
+        "        - {op: gt, path: x, value: 0}",
+        "    result: y",
+        "connectors:",
+        "  c1:",
+        "    kind: yaml",
+        "    mapping:",
+        "      Z: {idField: z}", // authoring 序 Z 在 A 前，非字典序
+        "      A: {idField: a}",
+        "actions:",
+        "  doIt:",
+        "    target: C",
+        "    handler: x.y",
+        "    actorRoles: [admin]",
+        "    preconditions:",
+        "      - {value: 0, op: gt, path: input.x}", // authoring 序非字典序
+      ].join("\n"),
+    });
+    const roundtripped = JSON.parse(stableStringify(base)) as CanonicalIR;
+    expect(diffIR(base, roundtripped).highest).toBe("none");
+
+    // 真实内容变化仍需被识别为 breaking，未被归一化吞掉
+    roundtripped.connectors.c1.kind = "sql";
+    expect(diffIR(base, roundtripped).highest).toBe("breaking");
   });
 });

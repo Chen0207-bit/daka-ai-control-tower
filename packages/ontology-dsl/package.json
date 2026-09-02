@@ -9,7 +9,11 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "validate": "tsx src/cli.ts validate ../../ontology/schema/v1"
+    "validate": "tsx src/cli.ts validate ../../ontology/schema/v1",
+    "compile": "tsx src/cli.ts compile ../../ontology/schema/v1",
+    "check-generated": "tsx src/cli.ts check-generated ../../ontology/schema/v1",
+    "inspect": "tsx src/cli.ts inspect ../../ontology/schema/v1",
+    "diff": "tsx src/cli.ts diff"
   },
   "dependencies": {
     "yaml": "^2.8.0"
