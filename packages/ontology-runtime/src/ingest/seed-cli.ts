@@ -1,7 +1,8 @@
 import { fileURLToPath } from "node:url";
 import { createPool, withTx } from "../db/client";
 import { loadManifest } from "../manifest";
-import { applyDataPack, loadDataPack, planDataPack, validateDataPack } from "./datapack";
+import { applyDataPack, planDataPack, validateDataPack } from "./datapack";
+import { loadDataPack } from "./datapack-fs";
 import { materializeFindings, runRules } from "../rules/runner";
 
 /**

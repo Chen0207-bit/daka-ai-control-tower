@@ -22,7 +22,8 @@ import {
   withTx,
   bossActionInbox,
 } from "../src/index";
-import { applyDataPack, loadDataPack } from "../src/ingest/datapack";
+import { applyDataPack } from "../src/ingest/datapack";
+import { loadDataPack } from "../src/ingest/datapack-fs";
 import { runRules, materializeFindings } from "../src/rules/runner";
 
 /**

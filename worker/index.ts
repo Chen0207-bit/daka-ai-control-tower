@@ -1,5 +1,6 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { handleOntologyApi } from "./ontology/api";
 
 interface Env {
   ASSETS: Fetcher;
@@ -7,6 +8,8 @@ interface Env {
   UPLOADS?: R2Bucket;
   GLM_API_KEY?: string;
   GLM_MODEL?: string;
+  HYPERDRIVE?: { connectionString: string };
+  DATABASE_URL?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -188,6 +191,12 @@ const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === "/api/health") return json({ ok: true, glmConfigured: Boolean(env.GLM_API_KEY), storageConfigured: Boolean(env.DB && env.UPLOADS) });
+    // Ontology Runtime API（/v1/* 与 /health/*）
+    if (url.pathname.startsWith("/v1/") || url.pathname.startsWith("/health/")) {
+      const res = await handleOntologyApi(request, env);
+      if (res) return res;
+      return json({ error: "Not found" }, 404);
+    }
     if (url.pathname === "/api/data") return request.method === "GET" ? handleWorkspaceData(url, env) : json({ error: "Method not allowed" }, 405);
     if (url.pathname === "/api/chat") return request.method === "POST" ? handleChat(request, env) : json({ error: "Method not allowed" }, 405);
     if (url.pathname === "/api/import") return request.method === "POST" ? handleImport(request, env) : json({ error: "Method not allowed" }, 405);

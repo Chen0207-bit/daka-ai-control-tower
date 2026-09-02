@@ -31,7 +31,10 @@
     "seed:demo:dry": "pnpm --filter @daka/ontology-runtime exec tsx src/ingest/seed-cli.ts --dry-run"
   },
   "dependencies": {
+    "@daka/ontology-dsl": "workspace:^",
+    "@daka/ontology-runtime": "workspace:^",
     "drizzle-orm": "0.45.2",
+    "pg": "^8.13.1",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "xlsx": "0.18.5"
@@ -44,6 +47,7 @@
     "@openai/sites-vite-plugin": "0.1.0",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
+    "@types/pg": "^8.11.10",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",

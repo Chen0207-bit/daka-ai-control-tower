@@ -1,7 +1,4 @@
 import { createHash } from "node:crypto";
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
-import { parse as parseYaml } from "yaml";
 import type pg from "pg";
 import type { ActorContext } from "../context";
 import { RUNTIME_ERRORS, RuntimeError } from "../errors";
@@ -57,37 +54,34 @@ export interface DataPack {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SOURCES = ["confirmed_public", "demo_assumption", "external_signal", "model_suggestion"];
 
-export function loadDataPack(dir: string): DataPack {
-  const read = (name: string): unknown => {
-    try {
-      return parseYaml(readFileSync(join(dir, name), "utf8"));
-    } catch {
-      return undefined;
-    }
-  };
-  const manifestRaw = read("pack.yaml") as Record<string, unknown> | undefined;
-  if (!manifestRaw?.pack) {
-    throw new RuntimeError(RUNTIME_ERRORS.VALIDATION, `Data Pack 缺 pack.yaml 或 pack 段: ${dir}`);
+/** 从已解析内容构造 pack（Worker/Node 通用）；结构非法即抛 ONTO-400。 */
+export function buildDataPack(raw: {
+  pack: unknown;
+  objects?: unknown;
+  links?: unknown;
+  facts?: unknown;
+  documents?: unknown;
+  anchors?: unknown;
+}): DataPack {
+  const p = raw.pack as Record<string, unknown> | undefined;
+  if (!p) {
+    throw new RuntimeError(RUNTIME_ERRORS.VALIDATION, "Data Pack 缺 pack 段");
   }
-  const p = manifestRaw.pack as Record<string, unknown>;
   const required = ["id", "version", "ontologyConstraint", "source", "tenantId", "workspaceId"];
   for (const k of required) {
-    if (p[k] === undefined) throw new RuntimeError(RUNTIME_ERRORS.VALIDATION, `pack.yaml 缺字段 pack.${k}`);
+    if (p[k] === undefined) throw new RuntimeError(RUNTIME_ERRORS.VALIDATION, `pack 缺字段 pack.${k}`);
   }
   if (!SOURCES.includes(String(p.source))) {
     throw new RuntimeError(RUNTIME_ERRORS.VALIDATION, `pack.source 必须是 ${SOURCES.join("/")}`);
   }
-  const objects = ((read("objects.yaml") as Record<string, unknown>)?.objects ?? []) as DataPackObject[];
-  const links = ((read("links.yaml") as Record<string, unknown>)?.links ?? []) as DataPackLink[];
-  const facts = ((read("facts.yaml") as Record<string, unknown>)?.facts ?? []) as DataPackFact[];
-  const documents = ((read("documents.yaml") as Record<string, unknown>)?.documents ?? []) as DataPack["documents"];
-  const anchors = ((read("documents.yaml") as Record<string, unknown>)?.anchors ?? []) as DataPack["anchors"];
-
-  // 内容指纹（确定性）：除 fingerprint 外全量内容
+  const objects = (raw.objects ?? []) as DataPackObject[];
+  const links = (raw.links ?? []) as DataPackLink[];
+  const facts = (raw.facts ?? []) as DataPackFact[];
+  const documents = (raw.documents ?? []) as DataPack["documents"];
+  const anchors = (raw.anchors ?? []) as DataPack["anchors"];
   const fingerprint = createHash("sha256")
     .update(JSON.stringify({ manifest: p, objects, links, facts, documents, anchors }))
     .digest("hex");
-
   return {
     manifest: {
       id: String(p.id),
@@ -288,7 +282,3 @@ async function recordIngest(
   );
 }
 
-/** 列出 pack 目录（seed CLI 用） */
-export function listPackFiles(dir: string): string[] {
-  return readdirSync(dir).filter((n) => n.endsWith(".yaml") || n.endsWith(".yml")).sort();
-}

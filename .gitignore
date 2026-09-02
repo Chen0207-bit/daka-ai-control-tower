@@ -42,3 +42,6 @@ yarn-error.log*
 
 # 允许占位示例入库（真实 Secret 仍被忽略）
 !.env.example
+
+# wrangler 本地变量（含本地连接串，不入库）
+.dev.vars
