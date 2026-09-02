@@ -28,9 +28,12 @@
     "db:migrate": "pnpm --filter @daka/ontology-runtime exec tsx src/db/migrate.ts",
     "db:verify": "pnpm --filter @daka/ontology-runtime exec tsx src/db/migrate.ts verify",
     "seed:demo": "pnpm --filter @daka/ontology-runtime exec tsx src/ingest/seed-cli.ts",
-    "seed:demo:dry": "pnpm --filter @daka/ontology-runtime exec tsx src/ingest/seed-cli.ts --dry-run"
+    "seed:demo:dry": "pnpm --filter @daka/ontology-runtime exec tsx src/ingest/seed-cli.ts --dry-run",
+    "test:e2e": "node scripts/e2e-api.mjs",
+    "test:integration": "pnpm --filter @daka/ontology-runtime run test"
   },
   "dependencies": {
+    "@daka/ontology-client": "workspace:^",
     "@daka/ontology-dsl": "workspace:^",
     "@daka/ontology-runtime": "workspace:^",
     "drizzle-orm": "0.45.2",

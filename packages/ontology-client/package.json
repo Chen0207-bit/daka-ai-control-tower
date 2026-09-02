@@ -1,0 +1,16 @@
+{
+  "name": "@daka/ontology-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "控制塔/UI 使用的 Ontology Runtime typed client（同源 Worker API）",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

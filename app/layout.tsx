@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "./dashboard.css";
 import "./v11.css";
+import "./ontology-panel.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

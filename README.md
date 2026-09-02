@@ -5,6 +5,27 @@ DAKA AI 经营控制塔是一个面向 IP 经营老板的可交互 Demo。它把
 > 当前版本：`v1.2.0`<br>
 > 在线 Demo：[daka-ai-control-tower.seefreefuture.chatgpt.site](https://daka-ai-control-tower.seefreefuture.chatgpt.site/)
 
+
+## Ontology Platform（feat/ontology-platform-v1 分支）
+
+本分支在原演示控制塔之上建设了本体驱动的事实层（三期完成，证据见任务包 `06/07`）：
+
+- **DSL v1 编译链**：`ontology/spec/v1.md` + `packages/ontology-dsl`，`validate/compile/diff/inspect/check-generated`，确定性指纹与兼容性分级。
+- **PostgreSQL 规范事实库**：`migrations/postgres/`（双时态、证据锚点、审计/outbox、RLS），便携 binaries 或 docker compose 启动。
+- **Ontology Runtime**：`packages/ontology-runtime`（Action/Rule/Policy/Projection/数据包幂等导入），由 Cloudflare Worker `/v1/*` 暴露（`worker/ontology/`），Hyperdrive 连接 PostgreSQL。
+- **前端**：侧栏「本体平台」视图（`app/ontology-panel.tsx`）实时消费投影 API，四闭环操作走真实 Runtime Action。
+
+快速复现（从空库）见 [docs/operations-runbook.md](docs/operations-runbook.md)；架构见 [docs/architecture.md](docs/architecture.md)；DSL 手册见 [docs/dsl-guide.md](docs/dsl-guide.md)。
+
+```bash
+pnpm install
+pnpm ontology:validate && pnpm ontology:compile && pnpm ontology:check-generated
+DATABASE_URL=... pnpm db:migrate && DATABASE_URL=... pnpm db:verify && DATABASE_URL=... pnpm seed:demo
+pnpm dev                              # 控制塔 + Ontology API 同源启动
+node scripts/e2e-api.mjs              # 四闭环 E2E（23 断言）
+pnpm test                             # DSL 单元/契约测试（46）
+```
+
 ## 第一性原理
 
 老板真正需要的不是更多报表，而是更短的决策路径：

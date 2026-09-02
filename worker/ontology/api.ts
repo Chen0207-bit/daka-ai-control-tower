@@ -91,6 +91,10 @@ function errorResponse(err: unknown): Response {
   if (err instanceof RuntimeError) {
     return json({ error: { code: err.code, message: err.message } }, httpStatusFor(err.code));
   }
+  // PostgreSQL 唯一约束冲突 → 409（不含内部细节）
+  if (typeof err === "object" && err !== null && (err as { code?: string }).code === "23505") {
+    return json({ error: { code: "ONTO-409-CONFLICT", message: "记录已存在（唯一约束）" } }, 409);
+  }
   console.error(JSON.stringify({ event: "ontology_api_error", error: err instanceof Error ? err.message : String(err) }));
   return json({ error: { code: "ONTO-500-INTERNAL", message: "内部错误" } }, 500);
 }
@@ -322,6 +326,70 @@ export async function handleOntologyApi(request: Request, env: OntologyEnv): Pro
         return { findings: findings.length, created: created.length, items: findings };
       });
       return json(result);
+    }
+
+    // 可观测性：核心指标（API 层 latency 由 Worker 平台提供；此处为业务指标）
+    if (path === "/v1/metrics" && request.method === "GET") {
+      const metrics = await withTx(pool, ctx, async (c) => {
+        const q = async (sql: string) => (await c.query(sql, [ctx.tenantId, ctx.workspaceId])).rows[0] as Record<string, unknown>;
+        const actions = await q(`SELECT count(*)::int AS total, count(*) FILTER (WHERE status='completed')::int AS completed FROM action_runs WHERE tenant_id=$1 AND workspace_id=$2`);
+        const facts = await q(`SELECT count(*) FILTER (WHERE status='proposed')::int AS proposed, count(*) FILTER (WHERE status='verified')::int AS verified FROM fact_assertions WHERE tenant_id=$1 AND workspace_id=$2`);
+        const ingest = await q(`SELECT count(*)::int AS jobs, count(*) FILTER (WHERE status='failed' OR status='partial')::int AS failed FROM ingest_jobs WHERE tenant_id=$1 AND workspace_id=$2`);
+        const risks = await q(`SELECT count(*)::int AS open FROM object_records WHERE tenant_id=$1 AND workspace_id=$2 AND object_type='RiskFinding' AND data->>'status'='open' AND superseded_at IS NULL`);
+        return {
+          action_runs: actions,
+          fact_review_queue: facts,
+          ingest,
+          open_risks: risks.open,
+          projection_lag_seconds: 0, // 投影为请求时纯推导，无滞后
+        };
+      });
+      return json(metrics);
+    }
+
+    // 数据质量报告：缺引用/负余额/证据缺失/时态冲突
+    if (path === "/v1/dq/report" && request.method === "GET") {
+      const report = await withTx(pool, ctx, async (c) => {
+        const issues: Array<{ rule: string; count: number; samples: string[] }> = [];
+        const orphanLinks = await c.query(
+          `SELECT l.id FROM link_records l
+           LEFT JOIN object_records f ON f.tenant_id=l.tenant_id AND f.workspace_id=l.workspace_id AND f.id=l.from_id AND f.superseded_at IS NULL
+           LEFT JOIN object_records t ON t.tenant_id=l.tenant_id AND t.workspace_id=l.workspace_id AND t.id=l.to_id AND t.superseded_at IS NULL
+           WHERE l.tenant_id=$1 AND l.workspace_id=$2 AND l.superseded_at IS NULL AND (f.id IS NULL OR t.id IS NULL)`,
+          [ctx.tenantId, ctx.workspaceId],
+        );
+        if (orphanLinks.rows.length > 0) issues.push({ rule: "link_reference_missing", count: orphanLinks.rows.length, samples: orphanLinks.rows.slice(0, 5).map((r) => r.id) });
+        const noEvidence = await c.query(
+          `SELECT id FROM fact_assertions WHERE tenant_id=$1 AND workspace_id=$2 AND status='verified' AND evidence_anchor_id IS NULL AND review_comment IS NULL`,
+          [ctx.tenantId, ctx.workspaceId],
+        );
+        if (noEvidence.rows.length > 0) issues.push({ rule: "verified_fact_missing_evidence", count: noEvidence.rows.length, samples: noEvidence.rows.slice(0, 5).map((r) => r.id) });
+        const temporalConflict = await c.query(
+          `SELECT id FROM fact_assertions WHERE tenant_id=$1 AND workspace_id=$2 AND valid_from IS NOT NULL AND valid_to IS NOT NULL AND valid_from > valid_to`,
+          [ctx.tenantId, ctx.workspaceId],
+        );
+        if (temporalConflict.rows.length > 0) issues.push({ rule: "temporal_conflict", count: temporalConflict.rows.length, samples: temporalConflict.rows.slice(0, 5).map((r) => r.id) });
+        const failedIngest = await c.query(
+          `SELECT record_key FROM ingest_records WHERE tenant_id=$1 AND workspace_id=$2 AND status='failed'`,
+          [ctx.tenantId, ctx.workspaceId],
+        );
+        if (failedIngest.rows.length > 0) issues.push({ rule: "ingest_record_failed", count: failedIngest.rows.length, samples: failedIngest.rows.slice(0, 5).map((r) => r.record_key) });
+        return { checkedAt: new Date().toISOString(), issues, healthy: issues.length === 0 };
+      });
+      return json(report);
+    }
+
+    // ingest 错误队列（失败记录列表）
+    const ingestErrors = /^\/v1\/ingest\/jobs\/([0-9a-f-]{36})\/errors$/.exec(path);
+    if (ingestErrors && request.method === "GET") {
+      const items = await withTx(pool, ctx, async (c) => {
+        const { rows } = await c.query(
+          `SELECT record_key, record_type, error FROM ingest_records WHERE tenant_id=$1 AND workspace_id=$2 AND job_id=$3 AND status='failed'`,
+          [ctx.tenantId, ctx.workspaceId, ingestErrors[1]],
+        );
+        return rows;
+      });
+      return json({ items });
     }
 
     return json({ error: { code: "ONTO-404-NOT-FOUND", message: `未匹配路由 ${path}` } }, 404);

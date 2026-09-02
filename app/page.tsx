@@ -1,8 +1,9 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
+import { OntologyPanel } from "./ontology-panel";
 
-type View = "actions" | "operations" | "portfolio" | "cash" | "signals" | "data" | "release" | "blueprint";
+type View = "actions" | "operations" | "portfolio" | "cash" | "signals" | "data" | "release" | "blueprint" | "ontology";
 type ImportType = "ip" | "ledger";
 type ImportStage = "select" | "preview" | "done";
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -19,13 +20,13 @@ type DecisionIssue = {
 const decisionIssues: DecisionIssue[] = [
   { id:"acm-signature", level:"高", title:"AC 米兰签名缺口可能影响限量系列发行", summary:"第二批签名仍缺 120 份。运营已完成代理催办，继续等待可能压缩设计与生产窗口。", owner:"发行运营 · 老K", due:"今天 18:00", state:"等待老板决策", impact:"约 800 张产品 · 预计上市窗口 9 月下旬", evidence:["签名台账：目标 300，已收 180","代理回复：最快 9 月 18 日确认","供应商锁产窗口：9 月 22 日"], assumptions:["人物组合可在卡面终审前调整","拆批不会触发最低发行量条款"], options:[{name:"继续等待原签名",result:"保持原人物组合",time:"可能延迟 14 天",cash:"无新增成本",risk:"中高"},{name:"调整人物组合",result:"保住原发行窗口",time:"按期",cash:"预计影响收入 -3%",risk:"中",recommended:true},{name:"拆分两批发行",result:"首批按期上市",time:"延迟 3 天",cash:"增加成本 ¥8万",risk:"低"}] },
   { id:"nufc-payment", level:"高", title:"纽卡斯尔 122 万授权费需要付款取舍", summary:"按期付款有利于续约关系，但未来 90 天现金余量将接近内部安全线。", owner:"财务 · 铁算盘", due:"9 月 8 日", state:"等待财务确认", impact:"未来 90 天现金安全余量", evidence:["合同付款日：9 月 10 日","当前资料完整度：80%","验收确认仍缺 1 份"], assumptions:["分期需要版权方书面同意","AC 米兰新品预算保持不变"], options:[{name:"按期全额付款",result:"保障合同履约",time:"按期",cash:"支出 ¥122万",risk:"低"},{name:"申请两期支付",result:"保留新品预算",time:"需 3 天沟通",cash:"本期减少 ¥61万",risk:"中",recommended:true}] },
-  { id:"pb-launch", level:"中", title:"《浴血黑帮》首批演员签名计划尚未启动", summary:"人物清单已建立，但优先级、代理联络和预算边界仍未确认。", owner:"IP 运营 · 卡卡", due:"9 月 30 日", state:"运营可自行处理", impact:"首批产品立项与人物资源锁定", evidence:["已录入 21 位主要演员","尚无签名目标数量","预算待业务负责人确认"], assumptions:["首批产品聚焦 6–8 位核心人物"], options:[{name:"先锁定核心 6 人",result:"快速形成首发组合",time:"本周启动",cash:"预算可控",risk:"低",recommended:true},{name:"全名单同步询价",result:"获得完整成本视图",time:"增加 2 周",cash:"待报价",risk:"中"}] }
+  { id:"pb-launch", level:"中", title:"《影视 IP·代号 PB》首批演员签名计划尚未启动", summary:"人物清单已建立，但优先级、代理联络和预算边界仍未确认。", owner:"IP 运营 · 卡卡", due:"9 月 30 日", state:"运营可自行处理", impact:"首批产品立项与人物资源锁定", evidence:["已录入 21 位主要演员","尚无签名目标数量","预算待业务负责人确认"], assumptions:["首批产品聚焦 6–8 位核心人物"], options:[{name:"先锁定核心 6 人",result:"快速形成首发组合",time:"本周启动",cash:"预算可控",risk:"低",recommended:true},{name:"全名单同步询价",result:"获得完整成本视图",time:"增加 2 周",cash:"待报价",risk:"中"}] }
 ];
 
 const baseIps = [
   { code: "ACM", name: "AC 米兰", kind: "足球俱乐部", contract: "2025–2027", health: 72, pay: "¥46万", stage: "发行中", risk: "1 项风险", tone: "milan" },
   { code: "NU", name: "纽卡斯尔联", kind: "足球俱乐部", contract: "2026–2028", health: 61, pay: "¥122万", stage: "筹备中", risk: "1 项风险", tone: "newcastle" },
-  { code: "PB", name: "浴血黑帮", kind: "影视 IP", contract: "2026–2029", health: 30, pay: "—", stage: "待启动", risk: "需启动", tone: "peaky" },
+  { code: "PB", name: "影视 IP·代号 PB", kind: "影视 IP", contract: "2026–2029", health: 30, pay: "—", stage: "待启动", risk: "需启动", tone: "peaky" },
 ];
 
 const signals = [
@@ -40,7 +41,7 @@ const metricTasks: Record<MetricKey, { title:string; owner:string; due:string; s
     {title:"纽卡斯尔授权费：全额或分期",owner:"铁算盘",due:"09 月 08 日",status:"待老板决定",ai:"已计算 90 天现金影响"},
   ],
   delegated: [
-    {title:"浴血黑帮核心演员代理询价",owner:"卡卡",due:"今天",status:"执行中",ai:"已起草 6 封询价邮件"},
+    {title:"影视 IP·代号 PB核心演员代理询价",owner:"卡卡",due:"今天",status:"执行中",ai:"已起草 6 封询价邮件"},
     {title:"AC 米兰第三批素材验收",owner:"老K",due:"10 月 15 日",status:"已授权",ai:"持续追踪交付与验收人"},
     {title:"纽卡斯尔新援候选卡表复核",owner:"小雷达",due:"本周五",status:"已授权",ai:"已匹配官方新援公告"},
   ],
@@ -51,7 +52,7 @@ const metricTasks: Record<MetricKey, { title:string; owner:string; due:string; s
   completed: [
     {title:"抽取 3 份合同付款节点",owner:"DAKA Agent",due:"已完成",status:"已代办",ai:"生成 7 条未来义务"},
     {title:"核对 AC 米兰 6 位人物签名进度",owner:"DAKA Agent",due:"已完成",status:"已代办",ai:"识别 2 个异常"},
-    {title:"整理浴血黑帮 21 位演员名单",owner:"DAKA Agent",due:"已完成",status:"已代办",ai:"建议优先联系 6 人"},
+    {title:"整理影视 IP·代号 PB 21 位演员名单",owner:"DAKA Agent",due:"已完成",status:"已代办",ai:"建议优先联系 6 人"},
   ],
 };
 
@@ -61,14 +62,14 @@ const ledgerRows = [
   {id:"SVC-LEGAL-09",date:"2026.10.05",ip:"共享服务",project:"授权合同法律复核",amount:"¥35,000",status:"已排期",owner:"法务",basis:"专项服务报价",note:"用于付款条款、MG 与分成条款复核；Demo 推演"},
   {id:"ACM-SIG-03",date:"2026.10.15",ip:"AC 米兰",project:"人物资源第三批 · 签名包干",amount:"¥460,000",status:"待付款",owner:"老K",basis:"人物资源补充协议",note:"按批包干，与第三批签名验收联动，超出份数按协议单价另计；Demo 推演"},
   {id:"ACM-ROY-Q3",date:"2026.11.15",ip:"AC 米兰",project:"Q3 授权分成 · 超保底溢出结算",amount:"¥186,000",status:"待对账",owner:"铁算盘",basis:"授权合同分成条款 · 超出 MG 部分 10%",note:"按 Q3 净销售额推演口径计算，需与版权方对账单核对后支付；Demo 推演"},
-  {id:"PB-TALENT-01",date:"2026.11.30",ip:"浴血黑帮",project:"首批演员资源 · 立项预算",amount:"¥780,000",status:"预算中",owner:"卡卡",basis:"立项预算草案",note:"授权拟按 MG+分成结构签约，首年 MG 尚未锁定；当前为预算占用，未形成正式义务；Demo 推演"},
+  {id:"PB-TALENT-01",date:"2026.11.30",ip:"影视 IP·代号 PB",project:"首批演员资源 · 立项预算",amount:"¥780,000",status:"预算中",owner:"卡卡",basis:"立项预算草案",note:"授权拟按 MG+分成结构签约，首年 MG 尚未锁定；当前为预算占用，未形成正式义务；Demo 推演"},
   {id:"ACM-LIC-H2",date:"2026.12.15",ip:"AC 米兰",project:"年度授权费 · MG 下半年度分期",amount:"¥600,000",status:"已排期",owner:"铁算盘",basis:"授权合同 · MG 半年付",note:"全年 MG ¥120 万分两期；Demo 推演"},
 ];
 
 const releaseProjects = [
   {id:"acm",code:"ACM",name:"AC Milan Signatures 2026",ip:"AC 米兰",readiness:64,status:"存在风险",stage:"授权审批",milestone:"09 月 22 日锁定生产窗口",people:"Leão / Pulisic / Modrić 等 6 人",risk:"第二批签名仍缺 120 份",next:"老板选择保期方案",volume:"计划发行 5,000 张"},
   {id:"nufc",code:"NU",name:"Newcastle United First Team 2026/27",ip:"纽卡斯尔联",readiness:52,status:"待确认",stage:"人物与卡表",milestone:"09 月 10 日授权费审批",people:"Nico González 等新援候选池",risk:"新援变化需要更新人物清单",next:"复核新援授权与卡表优先级",volume:"Demo 计划 3,600 张"},
-  {id:"pb",code:"PB",name:"Peaky Blinders Cast Series",ip:"浴血黑帮",readiness:30,status:"待启动",stage:"资源询价",milestone:"09 月 30 日完成首轮代理询价",people:"Cillian Murphy 等 21 位演员",risk:"预算边界和签名目标尚未确认",next:"先联系核心 6 位演员",volume:"Demo 计划 2,400 张"},
+  {id:"pb",code:"PB",name:"代号 PB 演员系列",ip:"影视 IP·代号 PB",readiness:30,status:"待启动",stage:"资源询价",milestone:"09 月 30 日完成首轮代理询价",people:"主演阵容 21 位（代号 PB·演示推演）",risk:"预算边界和签名目标尚未确认",next:"先联系核心 6 位演员",volume:"Demo 计划 2,400 张"},
 ];
 
 const acPlayers = [
@@ -88,6 +89,7 @@ const nav: { id: View; label: string; icon: string }[] = [
   { id: "cash", label: "现金与义务", icon: "¥" },
   { id: "signals", label: "变动雷达", icon: "◎" },
   { id: "data", label: "数据中心", icon: "⇧" },
+  { id: "ontology", label: "本体平台", icon: "⬡" },
   { id: "blueprint", label: "能力蓝图", icon: "↗" },
 ];
 
@@ -157,6 +159,7 @@ export default function Home() {
       {view === "signals" && <SignalRadar onAsk={openAgent} />}
       {view === "data" && <DataCenter onImport={openImport} />}
       {view === "release" && <Release initialProjectId={releaseProjectId} onBlueprint={() => setView("blueprint")} />}
+      {view === "ontology" && <OntologyPanel />}
       {view === "blueprint" && <Blueprint />}
       <footer>DAKA AI 经营控制塔 · 新闻与经营数字均明确标记演示属性，不构成真实业务事实</footer>
     </section>
@@ -195,7 +198,7 @@ function OperationsWorkbench({ approved, onEscalate, onAsk }: { approved:string[
     <div className="ops-stats"><button className={filter==="pending"?"active":""} onClick={()=>setFilter("pending")}><span>AI 已完成，待确认</span><b>4</b></button><button className={filter==="missing"?"active":""} onClick={()=>setFilter("missing")}><span>需要补充信息</span><b>3</b></button><button className={filter==="escalate"?"active":""} onClick={()=>setFilter("escalate")}><span>需要升级老板</span><b>{acApproved?1:2}</b></button><button className={filter==="auto"?"active":""} onClick={()=>setFilter("auto")}><span>今日已自动推进</span><b>12</b></button></div>
     <div className="ops-layout"><section className="panel ops-queue"><div className="panel-head"><div><span>AI REVIEW QUEUE</span><h2>{labels[filter]}</h2></div><em>点击上方指标切换</em></div>{notice&&<div className="action-notice">✓ {notice}<button onClick={()=>setNotice("")}>关闭</button></div>}
       {(filter==="pending"||filter==="escalate")&&<article className="ops-item urgent"><div className="ops-item-top"><span>需要升级老板</span><small>8 分钟前</small></div><h3>AC 米兰第二批签名缺口 120 份</h3><p>AI 已核对签名台账、代理回复和供应商锁产时间，判断超出运营可调整范围。</p><div className="ai-worklog"><b>✦ AI 已完成</b><span>核对 6 位人物进度</span><span>匹配 1 个在途项目</span><span>生成 3 套方案</span></div><div className="ops-buttons"><button onClick={()=>onAsk("AC 米兰签名缺口：帮助运营检查升级材料是否完整")}>检查 AI 依据</button><button className="primary" onClick={()=>onEscalate("acm-signature")}>{acApproved?"查看老板决定":"升级老板决策"}</button></div></article>}
-      {filter==="pending"&&<article className="ops-item"><div className="ops-item-top"><span className="auto">可由运营确认</span><small>21 分钟前</small></div><h3>浴血黑帮首批演员联络顺序</h3><p>AI 建议先锁定 6 位核心人物，并已按角色重要度与公开热度生成联络顺序。</p><div className="ai-worklog"><b>✦ AI 已完成</b><span>整理 21 位演员</span><span>标记 6 位核心人物</span><span>起草代理询价邮件</span></div><div className="ops-buttons"><button onClick={()=>onAsk("展示浴血黑帮核心 6 位演员的代理询价邮件草稿")}>查看草稿</button><button className="primary" onClick={()=>setNotice("已确认联络顺序；Demo 中不会真实发送外部邮件")}>确认执行</button></div></article>}
+      {filter==="pending"&&<article className="ops-item"><div className="ops-item-top"><span className="auto">可由运营确认</span><small>21 分钟前</small></div><h3>影视 IP·代号 PB首批演员联络顺序</h3><p>AI 建议先锁定 6 位核心人物，并已按角色重要度与公开热度生成联络顺序。</p><div className="ai-worklog"><b>✦ AI 已完成</b><span>整理 21 位演员</span><span>标记 6 位核心人物</span><span>起草代理询价邮件</span></div><div className="ops-buttons"><button onClick={()=>onAsk("展示影视 IP·代号 PB核心 6 位演员的代理询价邮件草稿")}>查看草稿</button><button className="primary" onClick={()=>setNotice("已确认联络顺序；Demo 中不会真实发送外部邮件")}>确认执行</button></div></article>}
       {filter==="missing"&&<article className="ops-item"><div className="ops-item-top"><span className="missing">缺少信息</span><small>今天 09:10</small></div><h3>AC 米兰第三批资源验收</h3><p>系统缺少验收负责人，无法自动创建 10 月 15 日检查点。</p><div className="ops-buttons"><button onClick={()=>setNotice("已指派老K为演示验收负责人")}>补充负责人</button><button onClick={()=>setNotice("事项已暂缓至明天 10:00，并保留提醒")}>暂缓处理</button></div></article>}
       {filter==="auto"&&<>{[["09:42","核对 AC 米兰签名台账","识别 2 个异常"],["09:31","匹配纽卡斯尔新援官宣","创建人物复核建议"],["09:18","提取合同付款节点","生成 7 条义务"]].map(x=><article className="ops-item auto-item" key={x[0]}><div className="ops-item-top"><span className="auto">已自动推进</span><small>{x[0]}</small></div><h3>{x[1]}</h3><p>{x[2]}；完整过程已进入审计记录。</p><div className="ops-buttons"><button onClick={()=>onAsk(`解释 AI 自动推进记录：${x[1]}`)}>查看执行记录</button></div></article>)}</>}</section>
       <aside className="ops-side"><section className="panel"><div className="panel-head"><div><span>AGENT ACTIVITY</span><h2>AI 今天替你做了什么</h2></div></div>{[["09:42","核对 AC 米兰签名台账","6 人"],["09:31","匹配外部人物变化","3 条"],["09:18","提取合同付款节点","2 项"],["08:55","生成催办邮件草稿","4 封"]].map(x=><div className="activity-row" key={x[0]}><time>{x[0]}</time><div><b>{x[1]}</b><small>{x[2]}</small></div><span>✓</span></div>)}</section><section className="panel boundary-card"><p className="eyebrow">DECISION RIGHTS</p><h2>什么情况必须升级？</h2><ul><li>影响发行日期超过 7 天</li><li>新增成本超过 ¥5 万</li><li>变更核心人物或产品定位</li><li>付款与合同条款发生变化</li></ul><button onClick={()=>onAsk("请解释当前运营升级老板的决策权限规则")}>让 Agent 解释边界 →</button></section></aside></div></>;
@@ -204,12 +207,12 @@ function OperationsWorkbench({ approved, onEscalate, onAsk }: { approved:string[
 const licenseTimeline = [
   { name: "AC 米兰", term: "2025–2027 · 剩余约 16 个月", tone: "lb-milan", width: 50, alertAt: 25, alertText: "2026.12 续约谈判窗口", hot: true },
   { name: "纽卡斯尔联", term: "2026–2028", tone: "lb-newcastle", width: 75, alertAt: 50, alertText: "2027.12 续约窗口", hot: false },
-  { name: "浴血黑帮", term: "2026–2029 · 待启动", tone: "lb-peaky", width: 100, alertAt: 75, alertText: "2028.12 续约窗口", hot: false },
+  { name: "影视 IP·代号 PB", term: "2026–2029 · 待启动", tone: "lb-peaky", width: 100, alertAt: 75, alertText: "2028.12 续约窗口", hot: false },
 ];
 const mgAlerts = [
   { ip: "AC 米兰", level: "高", title: "年度 MG 达成率 82%，Q4 存在补提差额风险", detail: "全年 MG ¥120 万（推演）；前三季分成计提 ¥98 万。若 Q4 销售不及推演，需按合同补提差额最高约 ¥22 万。", action: "10 月与版权方预对账" },
   { ip: "纽卡斯尔联", level: "中", title: "MG 下半年度分期 ¥122 万，9 月 10 日到期", detail: "全年 MG ¥244 万分两期（推演）；H2 分期已在台账待审批；Q3 分成对账单预计 10 月出具。", action: "进入付款审批流程" },
-  { ip: "浴血黑帮", level: "中", title: "首年 MG 目标区间尚未锁定", detail: "授权拟按 MG+分成结构签约（参考同类影视 IP 5–8% 版税口径）；首批立项前应先锁定 MG 与分成比例。", action: "发起立项评审" },
+  { ip: "影视 IP·代号 PB", level: "中", title: "首年 MG 目标区间尚未锁定", detail: "授权拟按 MG+分成结构签约（参考同类影视 IP 5–8% 版税口径）；首批立项前应先锁定 MG 与分成比例。", action: "发起立项评审" },
 ];
 
 function Portfolio({ ips, onImport, onOpenIP, onAsk }: { ips: typeof baseIps; onImport: () => void; onOpenIP: (code:string) => void; onAsk: (focus: string, draft?: string) => void }) {
@@ -235,7 +238,7 @@ function CashDashboard({ onImport, importedRows }: { onImport: () => void; impor
   const totalWan = Math.round(allRows.reduce((sum, row) => sum + amountOf(row), 0) / 10_000);
   const importedWan = Math.round(importedLedger.reduce((sum, row) => sum + amountOf(row), 0) / 10_000);
   const months = (() => { const defs: [string, string][] = [["2026-09", "9月"], ["2026-10", "10月"], ["2026-11", "11月"], ["2026-12", "12月"], ["2027-01", "1月"], ["2027-02", "2月"]]; const sums = new Map<string, number>(); for (const row of allRows) { const match = row.date.match(/^(\d{4})[-.](\d{2})/); if (!match) continue; const key = `${match[1]}-${match[2]}`; sums.set(key, (sums.get(key) || 0) + amountOf(row) / 10_000); } const values = defs.map(([key, label]) => ({ m: label, v: Math.round(sums.get(key) || 0) })); const max = Math.max(1, ...values.map(x => x.v)); return values.map(x => ({ ...x, p: Math.max(4, Math.round(x.v / max * 100)) })); })();
-  const donutColors: { label: string; color: string }[] = [{ label: "纽卡斯尔联", color: "#577fce" }, { label: "AC 米兰", color: "#233f34" }, { label: "浴血黑帮", color: "#d8a44d" }, { label: "共享服务", color: "#8a93a6" }];
+  const donutColors: { label: string; color: string }[] = [{ label: "纽卡斯尔联", color: "#577fce" }, { label: "AC 米兰", color: "#233f34" }, { label: "影视 IP·代号 PB", color: "#d8a44d" }, { label: "共享服务", color: "#8a93a6" }];
   const donutGroups = donutColors.map(group => { const v = Math.round(allRows.filter(row => row.ip === group.label).reduce((sum, row) => sum + amountOf(row), 0) / 10_000); return { ...group, v, pct: totalWan ? Math.round(v / totalWan * 100) : 0 }; });
   const donutGradient = (() => { let acc = 0; const parts = donutGroups.map(group => { const from = acc; acc = Math.min(100, acc + group.pct); return `${group.color} ${from}% ${acc}%`; }); return `conic-gradient(${parts.join(",")})`; })();
   const [selected,setSelected]=useState<LedgerRowView>(ledgerRows[0]);
@@ -267,7 +270,7 @@ function Blueprint() {
   const secondarySkus=[
     {sku:"First Team 2026/27 基础盒",ip:"纽卡斯尔联",issue:"发售价 ¥199",market:"二级均价 ¥328 · 溢价 +65%",trend:"30 天 ↑12%",advice:"建议：下一批印量 +20%，补充常规流通量"},
     {sku:"Signatures 2026 限编 1/99",ip:"AC 米兰",issue:"发售价 ¥899",market:"二级均价 ¥1,560 · 溢价 +73%",trend:"30 天 ↑5%",advice:"建议：维持限编、提高配签比例，守住稀缺段"},
-    {sku:"Cast Series 首批（待启动）",ip:"浴血黑帮",issue:"未定价",market:"无二级数据 · 参考同类影视 IP ±0–40%",trend:"—",advice:"建议：首版小批量 + 快反加印机制"},
+    {sku:"Cast Series 首批（待启动）",ip:"影视 IP·代号 PB",issue:"未定价",market:"无二级数据 · 参考同类影视 IP ±0–40%",trend:"—",advice:"建议：首版小批量 + 快反加印机制"},
   ];
   return <><PageHeader eyebrow="EXPANSION BLUEPRINT" title="一套跟着 IP 一起长大的经营系统" sub="人物、卡牌、项目与账目共用同一条数据主线；新场景上线即接入，不换系统、不重录数据。" />
   <section className="leverage-strip"><div><small>发行团队规模（公开参保人数）</small><b>15 人</b></div><div><small>在管国际 IP</small><b>10+</b></div><div><small>新增编制</small><b>0</b></div><p>AI 是经营杠杆：IP 越签越多、决策复杂度上升，组织不需要同步扩张——控制塔承接增量，不加人。</p></section>

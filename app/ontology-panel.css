@@ -1,0 +1,24 @@
+/* Ontology Panel（本体平台视图） */
+.ontology-panel { padding: 24px 28px; display: flex; flex-direction: column; gap: 16px; }
+.ontology-panel .page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.ontology-panel .page-head h1 { font-size: 22px; margin: 4px 0; }
+.ontology-panel .page-head .sub { color: var(--muted, #6b7280); font-size: 13px; max-width: 640px; }
+.ontology-panel mark { background: #fef3c7; color: #92400e; padding: 0 4px; border-radius: 3px; }
+.onto-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
+.onto-card { background: var(--card, #fff); border: 1px solid var(--line, #e5e7eb); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.onto-card h3 { font-size: 14px; margin: 0; display: flex; justify-content: space-between; align-items: baseline; }
+.onto-card h3 small { color: var(--muted, #9ca3af); font-weight: 400; font-size: 11px; }
+.onto-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 6px 8px; border-radius: 8px; background: var(--bg-soft, #f9fafb); flex-wrap: wrap; }
+.onto-row em { margin-left: auto; color: #b45309; font-size: 11px; font-style: normal; }
+.onto-row .tag { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: #e0e7ff; color: #3730a3; }
+.onto-row .tag.paid, .onto-row .tag.approved { background: #d1fae5; color: #065f46; }
+.onto-row .tag.overdue, .onto-row .tag.payment_overdue, .onto-row .tag.risk { background: #fee2e2; color: #991b1b; }
+.onto-row .tag.proposed, .onto-row .tag.suggested, .onto-row .tag.in_review { background: #fef3c7; color: #92400e; }
+.onto-row button.mini { font-size: 11px; padding: 2px 10px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; }
+.onto-row button.mini:hover:not(:disabled) { background: #f3f4f6; }
+.onto-row button.mini:disabled { opacity: 0.45; cursor: not-allowed; }
+.onto-row button.mini.danger { border-color: #fca5a5; color: #b91c1c; }
+.onto-card .totals { font-size: 12px; color: var(--muted, #6b7280); border-top: 1px dashed var(--line, #e5e7eb); padding-top: 8px; margin: 4px 0 0; }
+.onto-card .empty { font-size: 12px; color: var(--muted, #9ca3af); }
+.error-banner { background: #fee2e2; color: #991b1b; border-radius: 8px; padding: 8px 12px; font-size: 12.5px; }
+.ontology-panel .ghost { border: 1px solid var(--line, #d1d5db); background: transparent; border-radius: 8px; padding: 6px 14px; cursor: pointer; font-size: 13px; }
