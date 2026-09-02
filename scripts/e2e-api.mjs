@@ -60,6 +60,15 @@ console.log(`E2E against ${BASE}`);
   });
   ok("提交 proposed fact", f.status === 201 && f.data?.status === "proposed", JSON.stringify(f.data));
   const factId = f.data?.id;
+  const denyPropose = await call("/v1/facts", {
+    method: "POST", roles: ["executiveViewer"], actor: "e2e-exec",
+    body: { subjectType: "Contract", subjectId: id("0000000000d1"), predicate: "e2e.deny", objectValue: { v: 0 }, evidenceAnchorId: "d0000000-0000-4000-8000-0000000000e2" },
+  });
+  ok("越权提议事实被拒 403", denyPropose.status === 403, JSON.stringify(denyPropose.data));
+  const sysVerify = await call(`/v1/facts/${factId}/verify`, { method: "POST", roles: ["systemAgent"], actor: "e2e-extractor", body: {} });
+  ok("systemAgent 确认事实被拒 403", sysVerify.status === 403, JSON.stringify(sysVerify.data));
+  const execVerify = await call(`/v1/facts/${factId}/verify`, { method: "POST", roles: ["executiveViewer"], actor: "e2e-exec", body: {} });
+  ok("executiveViewer 确认事实被拒 403", execVerify.status === 403, JSON.stringify(execVerify.data));
   const v = await call(`/v1/facts/${factId}/verify`, { method: "POST", roles: ["legalReviewer"], actor: "e2e-legalreview", body: {} });
   ok("人工确认 fact → verified", v.status === 200 && v.data?.status === "verified", JSON.stringify(v.data));
   const list = await call("/v1/facts?status=verified", { roles: ["dataSteward"] });
@@ -91,6 +100,20 @@ console.log(`E2E against ${BASE}`);
   const cal = await call("/v1/projections/paymentCalendar", { roles: ["financeOperator"] });
   const item = cal.data?.items?.find((x) => x.id === id("000000000101"));
   ok("投影反映已付", item?.status === "paid" && item?.unsettledAmount === 0, JSON.stringify(item));
+}
+
+// 2.5 关系路由授权：越权创建 403；合法创建 201（关系委托 linkType.from 端点 write）
+{
+  const denyLink = await call("/v1/links", {
+    method: "POST", roles: ["executiveViewer"], actor: "e2e-exec",
+    body: { linkType: "contractParties", from: id("0000000000d1"), to: "d0000000-0000-4000-8000-0000000000e2" },
+  });
+  ok("越权创建关系被拒 403", denyLink.status === 403, JSON.stringify(denyLink.data));
+  const okLink = await call("/v1/links", {
+    method: "POST", roles: ["legalOperator"], actor: "e2e-legal",
+    body: { linkType: "contractHasPaymentSchedule", from: id("0000000000d1"), to: id("000000000101") },
+  });
+  ok("合法创建关系 201", okLink.status === 201, JSON.stringify(okLink.data));
 }
 
 // 3. 签名闭环：收货 → 分配 → 超额 422 → 桶余额

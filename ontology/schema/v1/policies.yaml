@@ -89,6 +89,14 @@ policies:
     fields: ["*"]
     description: 数据管家治理全部事实
 
+  factPropose:
+    effect: allow
+    roles: [systemAgent, dataSteward]
+    resources: [FactAssertion]
+    actions: [write]
+    fields: ["*"]
+    description: 创建 proposed 候选事实（write 在 FactAssertion 治理上下文中=提议/提交；proposeFact 只产生 proposed 状态）
+
   systemAgentProposeOnly:
     effect: allow
     roles: [systemAgent]

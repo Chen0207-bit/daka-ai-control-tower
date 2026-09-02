@@ -1,6 +1,9 @@
 import manifestJson from "../../ontology/.generated/ontology.manifest.json";
 import {
   assertSupported,
+  authorizeFact,
+  authorizeLinkCreate,
+  authorizeLinkRead,
   bossActionInbox,
   buildDataPack,
   buildHandlers,
@@ -184,9 +187,12 @@ export async function handleOntologyApi(request: Request, env: OntologyEnv): Pro
     }
 
     if (path === "/v1/links" && request.method === "GET") {
+      const linkType = url.searchParams.get("linkType") ?? undefined;
+      const policy = authorizeLinkRead(manifest, ctx, linkType);
+      if (!policy.allowed) return json({ error: { code: RUNTIME_ERRORS.POLICY_DENY, message: policy.reason } }, 403);
       const items = await withTx(pool, ctx, (c) =>
         listLinks(c, ctx, {
-          linkType: url.searchParams.get("linkType") ?? undefined,
+          linkType,
           fromId: url.searchParams.get("fromId") ?? undefined,
           toId: url.searchParams.get("toId") ?? undefined,
         }),
@@ -196,15 +202,21 @@ export async function handleOntologyApi(request: Request, env: OntologyEnv): Pro
 
     if (path === "/v1/links" && request.method === "POST") {
       const body = await readJson(request);
+      const linkType = String(body.linkType);
+      if (!manifest.linkTypes[linkType]) throw new RuntimeError(RUNTIME_ERRORS.VALIDATION, `linkType "${linkType}" 不在 manifest 中`);
+      const policy = authorizeLinkCreate(manifest, ctx, linkType);
+      if (!policy.allowed) return json({ error: { code: RUNTIME_ERRORS.POLICY_DENY, message: policy.reason } }, 403);
       const created = await withTx(pool, ctx, async (c) => {
         const releaseId = await ensureRelease(c, manifest, ctx.actorId);
-        await createLink(c, ctx, manifest, releaseId, String(body.linkType), String(body.from), String(body.to));
+        await createLink(c, ctx, manifest, releaseId, linkType, String(body.from), String(body.to));
         return { ok: true };
       });
       return json(created, 201);
     }
 
     if (path === "/v1/facts" && request.method === "GET") {
+      const policy = authorizeFact(manifest, ctx, "read");
+      if (!policy.allowed) return json({ error: { code: RUNTIME_ERRORS.POLICY_DENY, message: policy.reason } }, 403);
       const items = await withTx(pool, ctx, (c) =>
         listFacts(c, ctx, {
           status: url.searchParams.get("status") ?? undefined,
@@ -216,6 +228,8 @@ export async function handleOntologyApi(request: Request, env: OntologyEnv): Pro
 
     if (path === "/v1/facts" && request.method === "POST") {
       const body = await readJson(request);
+      const policy = authorizeFact(manifest, ctx, "propose");
+      if (!policy.allowed) return json({ error: { code: RUNTIME_ERRORS.POLICY_DENY, message: policy.reason } }, 403);
       const fact = await withTx(pool, ctx, async (c) => {
         const releaseId = await ensureRelease(c, manifest, ctx.actorId);
         return proposeFact(c, ctx, manifest, releaseId, {
@@ -233,6 +247,8 @@ export async function handleOntologyApi(request: Request, env: OntologyEnv): Pro
     const factAction = /^\/v1\/facts\/([0-9a-f-]{36})\/(verify|reject|supersede)$/.exec(path);
     if (factAction && request.method === "POST") {
       const [, factId, verb] = factAction;
+      const policy = authorizeFact(manifest, ctx, verb as "verify" | "reject" | "supersede");
+      if (!policy.allowed) return json({ error: { code: RUNTIME_ERRORS.POLICY_DENY, message: policy.reason } }, 403);
       const body = await readJson(request);
       const result = await withTx(pool, ctx, async (c) => {
         const releaseId = await ensureRelease(c, manifest, ctx.actorId);

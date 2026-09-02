@@ -94,3 +94,58 @@ export function maskRecord(
   }
   return out;
 }
+
+/**
+ * 治理资源授权映射（P3 修复：事实治理与关系路由必须走编译后的 policy 模型）。
+ *
+ * 资源/动作命名约定（避免与普通 objectType 混淆）：
+ * - `FactAssertion` 是治理资源。它虽是 objectType，但其状态迁移通过 `confirmFact`/`rejectFact`/
+ *   `supersedeFact` 治理动作授权，创建 proposed 事实通过 `write` 授权（`proposeFact` 只产生 proposed 状态，
+ *   不产生 verified）。这与普通对象把 `write` 当作「任意创建/更新」的语义一致。
+ * - `Link` 是运行时治理资源标识，不是 manifest objectType（`typeExists` 只认 objectType/interface）。
+ *   因此读取关系图（列出全部 links）按 `Link` 授权（只匹配 `resources:["*"]` 的通配 read），
+ *   创建具体关系则委托给 `linkType.from` 端点 objectType（复用该类型既有的 `write` 授权）。
+ */
+export const FACT_RESOURCE = "FactAssertion";
+export const LINK_RESOURCE = "Link";
+
+/** 事实治理 API 动词 → 编译 manifest 中的 policy action。 */
+export type FactVerb = "read" | "propose" | "verify" | "reject" | "supersede";
+
+const FACT_ACTION: Record<FactVerb, string> = {
+  read: "read",
+  propose: "write",
+  verify: "confirmFact",
+  reject: "rejectFact",
+  supersede: "supersedeFact",
+};
+
+/** linkType 的 from 端点 objectType（作为关系创建/读取的授权资源）。 */
+export function linkFromType(manifest: RuntimeManifest, linkType: string): string | undefined {
+  return manifest.linkTypes[linkType]?.from;
+}
+
+export function authorizeFact(
+  manifest: RuntimeManifest,
+  ctx: Pick<ActorContext, "roles">,
+  verb: FactVerb,
+): PolicyDecision {
+  return evaluatePolicy(manifest, ctx, FACT_RESOURCE, FACT_ACTION[verb]);
+}
+
+export function authorizeLinkRead(
+  manifest: RuntimeManifest,
+  ctx: Pick<ActorContext, "roles">,
+  linkType?: string,
+): PolicyDecision {
+  const resource = linkType ? (linkFromType(manifest, linkType) ?? LINK_RESOURCE) : LINK_RESOURCE;
+  return evaluatePolicy(manifest, ctx, resource, "read");
+}
+
+export function authorizeLinkCreate(
+  manifest: RuntimeManifest,
+  ctx: Pick<ActorContext, "roles">,
+  linkType: string,
+): PolicyDecision {
+  return evaluatePolicy(manifest, ctx, linkFromType(manifest, linkType) ?? LINK_RESOURCE, "write");
+}

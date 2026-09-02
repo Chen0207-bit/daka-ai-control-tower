@@ -472,7 +472,7 @@
       }
     }
   },
-  "fingerprint": "34366272685080a65aee9c118d680a85b52b825e90fa05773b781d502d1b821a",
+  "fingerprint": "77ab08b96617f40ca604e39d3aa19b159a1ce675e3e1d4e32d2b1c6c811be9d2",
   "interfaces": {
     "IPAsset": {
       "description": "可被授权和商业化的长期 IP 资产接口",
@@ -2839,6 +2839,23 @@
       ],
       "roles": [
         "executiveViewer"
+      ]
+    },
+    "factPropose": {
+      "actions": [
+        "write"
+      ],
+      "description": "创建 proposed 候选事实（write 在 FactAssertion 治理上下文中=提议/提交；proposeFact 只产生 proposed 状态）",
+      "effect": "allow",
+      "fields": [
+        "*"
+      ],
+      "resources": [
+        "FactAssertion"
+      ],
+      "roles": [
+        "dataSteward",
+        "systemAgent"
       ]
     },
     "financePaymentWrite": {
