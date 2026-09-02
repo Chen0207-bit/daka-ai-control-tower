@@ -39,3 +39,6 @@ yarn-error.log*
 /.wrangler/
 /outputs/
 /work/
+
+# 允许占位示例入库（真实 Secret 仍被忽略）
+!.env.example

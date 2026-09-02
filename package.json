@@ -24,7 +24,9 @@
     "ontology:compile": "pnpm --filter @daka/ontology-dsl exec tsx src/cli.ts compile ontology/schema/v1",
     "ontology:check-generated": "pnpm --filter @daka/ontology-dsl exec tsx src/cli.ts check-generated ontology/schema/v1",
     "ontology:diff": "pnpm --filter @daka/ontology-dsl exec tsx src/cli.ts diff",
-    "ontology:inspect": "pnpm --filter @daka/ontology-dsl exec tsx src/cli.ts inspect ontology/schema/v1"
+    "ontology:inspect": "pnpm --filter @daka/ontology-dsl exec tsx src/cli.ts inspect ontology/schema/v1",
+    "db:migrate": "pnpm --filter @daka/ontology-runtime exec tsx src/db/migrate.ts",
+    "db:verify": "pnpm --filter @daka/ontology-runtime exec tsx src/db/migrate.ts verify"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

@@ -1,0 +1,20 @@
+# 可选：有 Docker 的环境用 compose 起 PostgreSQL；无 Docker 时用便携 binaries（见 docs/operations-runbook.md）
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: change-me-super
+      POSTGRES_DB: postgres
+    ports:
+      - "55432:5432"
+    volumes:
+      - daka-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  daka-pgdata:

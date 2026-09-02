@@ -1,0 +1,25 @@
+{
+  "name": "@daka/ontology-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DAKA Ontology Runtime 核心：repository/action/rule/policy/projection，运行时无关可独立测试",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@daka/ontology-dsl": "workspace:*",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.20.0",
+    "typescript": "5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
