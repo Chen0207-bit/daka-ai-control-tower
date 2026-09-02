@@ -1,0 +1,23 @@
+linkTypes:
+  contractParties: {from: Contract, to: Party, cardinality: many_to_many, status: draft}
+  contractGrantsRights: {from: Contract, to: RightsGrant, cardinality: one_to_many, status: draft}
+  rightsCoverIp: {from: RightsGrant, to: IPAsset, cardinality: many_to_many, status: draft}
+  rightsCoverTalent: {from: RightsGrant, to: Talent, cardinality: many_to_many, status: draft}
+  contractCreatesObligations: {from: Contract, to: Obligation, cardinality: one_to_many, status: draft}
+  contractHasPaymentSchedule: {from: Contract, to: PaymentSchedule, cardinality: one_to_many, status: draft}
+  paymentSettlesSchedule: {from: Payment, to: PaymentSchedule, cardinality: many_to_many, status: draft}
+  contractGrantsSignatureEntitlement: {from: Contract, to: SignatureEntitlement, cardinality: one_to_many, status: draft}
+  signatureLotFulfillsEntitlement: {from: SignatureLot, to: SignatureEntitlement, cardinality: many_to_one, status: draft}
+  signatureMovementAffectsLot: {from: SignatureMovement, to: SignatureLot, cardinality: many_to_one, status: draft}
+  talentAffiliation: {from: Affiliation, to: Talent, cardinality: many_to_one, status: draft}
+  affiliationToIp: {from: Affiliation, to: IPAsset, cardinality: many_to_one, status: draft}
+  releaseProjectUsesIp: {from: ReleaseProject, to: IPAsset, cardinality: many_to_many, status: draft}
+  releaseProjectReliesOnRights: {from: ReleaseProject, to: RightsGrant, cardinality: many_to_many, status: draft}
+  releaseProjectContainsSku: {from: ReleaseProject, to: SKU, cardinality: one_to_many, status: draft}
+  releaseProjectHasMilestone: {from: ReleaseProject, to: MilestoneEvidence, cardinality: one_to_many, status: draft}
+  riskFindingTargetsContract: {from: RiskFinding, to: Contract, cardinality: many_to_one, status: draft}
+  marketObservationTargetsSku: {from: MarketObservation, to: SKU, cardinality: many_to_one, status: draft}
+  marketObservationTargetsTalent: {from: MarketObservation, to: Talent, cardinality: many_to_one, status: draft}
+  marketObservationTargetsIp: {from: MarketObservation, to: IPAsset, cardinality: many_to_one, status: draft}
+  recommendationBasedOnObservation: {from: ReleaseRecommendation, to: MarketObservation, cardinality: many_to_many, status: draft}
+  recommendationForReleaseProject: {from: ReleaseRecommendation, to: ReleaseProject, cardinality: many_to_one, status: draft}

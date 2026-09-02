@@ -1,0 +1,106 @@
+roleDefinitions:
+  executiveViewer:
+    description: 老板/管理层；只看聚合视图与高影响例外
+    dataScope: aggregated_only
+  legalOperator:
+    description: 法务操作；合同与权益录入
+    dataScope: workspace
+  legalReviewer:
+    description: 法务复核；确认法律事实、关闭风险
+    dataScope: workspace
+  financeOperator:
+    description: 财务操作；付款登记
+    dataScope: workspace
+  financeReviewer:
+    description: 财务复核；确认财务事实
+    dataScope: workspace
+  ipOperations:
+    description: IP/商品运营；签名流转与发行项目
+    dataScope: workspace
+  dataSteward:
+    description: 数据管家；本体事实治理
+    dataScope: tenant
+  systemAgent:
+    description: 系统/AI 代理；只能提交 proposed 候选事实
+    dataScope: workspace
+
+policies:
+  executiveAggregatedRead:
+    effect: allow
+    roles: [executiveViewer]
+    resources: ["*"]
+    actions: [read]
+    fields: ["*"]
+    description: 管理层只读（字段遮罩叠加生效）
+
+  sensitiveFieldMaskForExecutive:
+    effect: deny
+    roles: [executiveViewer]
+    resources: [Party, Talent, Payment, Document]
+    actions: [read]
+    fields: [registrationIdentifier, identityIdentifier, transactionReference, uri]
+    description: 高度机密字段对管理层遮罩
+
+  legalContractWrite:
+    effect: allow
+    roles: [legalOperator]
+    resources: [Contract, RightsGrant, Obligation, Document, EvidenceAnchor]
+    actions: [read, write, uploadContract]
+    fields: ["*"]
+    description: 法务操作可录入合同与证据
+
+  legalReviewGovernance:
+    effect: allow
+    roles: [legalReviewer]
+    resources: [Contract, RightsGrant, FactAssertion, RiskFinding]
+    actions: [read, confirmFact, rejectFact, resolveContractRisk]
+    fields: ["*"]
+    description: 法务复核确认法律事实并关闭风险
+
+  financePaymentWrite:
+    effect: allow
+    roles: [financeOperator]
+    resources: [PaymentSchedule, Payment]
+    actions: [read, write, recordPayment]
+    fields: ["*"]
+    description: 财务可读写付款对象
+
+  financeReviewGovernance:
+    effect: allow
+    roles: [financeReviewer]
+    resources: [PaymentSchedule, Payment, FactAssertion]
+    actions: [read, confirmFact, rejectFact]
+    fields: ["*"]
+    description: 财务复核确认财务事实
+
+  ipOperationsWrite:
+    effect: allow
+    roles: [ipOperations]
+    resources: [SignatureEntitlement, SignatureLot, SignatureMovement, ReleaseProject, SKU, MilestoneEvidence, MarketObservation, ReleaseRecommendation]
+    actions: [read, write, receiveSignatureLot, allocateSignatures, reviewReleaseRecommendation]
+    fields: ["*"]
+    description: IP 运营管理签名流转与发行项目
+
+  dataStewardGovernance:
+    effect: allow
+    roles: [dataSteward]
+    resources: ["*"]
+    actions: [read, confirmFact, rejectFact, supersedeFact]
+    fields: ["*"]
+    description: 数据管家治理全部事实
+
+  systemAgentProposeOnly:
+    effect: allow
+    roles: [systemAgent]
+    resources: [FactAssertion, Contract]
+    actions: [read, extractContractCandidates]
+    fields: ["*"]
+    description: 系统代理只能抽取候选事实
+
+  systemAgentDenyGovernance:
+    effect: deny
+    roles: [systemAgent]
+    resources: [FactAssertion]
+    actions: [confirmFact, rejectFact, supersedeFact, recordPayment, allocateSignatures]
+    fields: ["*"]
+    description: 显式拒绝系统代理执行任何治理/资金/库存动作（纵深防御）

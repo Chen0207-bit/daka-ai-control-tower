@@ -1,0 +1,221 @@
+objectTypes:
+  FootballClub:
+    implements: [IPAsset]
+    description: 足球俱乐部 IP
+    properties:
+      countryOrRegion: {type: string, required: false}
+      league: {type: string, required: false}
+
+  TVSeries:
+    implements: [IPAsset]
+    description: 影视剧或剧集 IP
+    properties:
+      productionCompany: {type: string, required: false}
+      releaseYear: {type: integer, required: false}
+
+  Party:
+    description: 公司、工作室、经纪机构、工厂、销售渠道或其他法律主体
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      legalName: {type: string, required: true}
+      partyType: {type: string, required: true, status: TBD}
+      registrationIdentifier: {type: string, required: false, security: highly_confidential}
+
+  Talent:
+    description: 球员、演员、创作者或其他自然人主体
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      canonicalName: {type: string, required: true}
+      alternateNames: {type: list<string>, required: false}
+      identityIdentifier: {type: string, required: false, security: highly_confidential}
+
+  Affiliation:
+    description: Talent 与 IP/Party 之间具有时间范围的归属或参与关系
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      affiliationType: {type: string, required: true, status: TBD}
+      validFrom: {type: date, required: false}
+      validTo: {type: date, required: false}
+
+  Contract:
+    description: 产生授权、义务和付款计划的法律协议
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      contractNumber: {type: string, required: false}
+      title: {type: string, required: true}
+      status: {type: enum, ref: contractStatus, required: true}
+      signedAt: {type: date, required: false}
+      effectiveFrom: {type: date, required: false}
+      effectiveTo: {type: date, required: false}
+      governingLaw: {type: string, required: false}
+      documentId: {type: uuid, required: true}
+
+  RightsGrant:
+    description: 基于合同产生、带约束条件的权利授予；不是 IP 自身固有属性
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      rightType: {type: string, required: true, status: TBD}
+      territory: {type: list<string>, required: false}
+      channel: {type: list<string>, required: false}
+      productCategory: {type: list<string>, required: false}
+      exclusivity: {type: string, required: false, status: TBD}
+      validFrom: {type: date, required: true}
+      validTo: {type: date, required: true}
+      approvalRequired: {type: boolean, required: false}
+
+  Obligation:
+    description: 合同产生的非付款义务、限制或审批要求
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      obligationType: {type: string, required: true, status: TBD}
+      description: {type: text, required: true}
+      dueAt: {type: datetime, required: false}
+      completionStatus: {type: string, required: true, status: TBD}
+
+  PaymentSchedule:
+    description: 合同约定的应付节点
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      amount: {type: decimal, required: true}
+      currency: {type: string, required: true}
+      dueAt: {type: datetime, required: true}
+      triggerCondition: {type: text, required: false}
+      status: {type: enum, ref: paymentStatus, required: true}
+
+  Payment:
+    description: 实际发生的付款事件
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      amount: {type: decimal, required: true}
+      currency: {type: string, required: true}
+      paidAt: {type: datetime, required: true}
+      transactionReference: {type: string, required: false, security: confidential}
+
+  SignatureEntitlement:
+    description: 合同授予的签名额度及约束
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      grantedQuantity: {type: integer, required: true}
+      unit: {type: string, required: true, status: TBD}
+      validFrom: {type: date, required: false}
+      validTo: {type: date, required: false}
+      constraints: {type: text, required: false}
+
+  SignatureLot:
+    description: 实际接收并可追踪的一批签名物料
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      lotNumber: {type: string, required: true}
+      receivedQuantity: {type: integer, required: true}
+      receivedAt: {type: datetime, required: true}
+      qualityStatus: {type: string, required: false, status: TBD}
+
+  SignatureMovement:
+    description: 签名额度或实物库存的不可变流转事件
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      movementType: {type: enum, ref: signatureMovementType, required: true}
+      quantity: {type: integer, required: true}
+      occurredAt: {type: datetime, required: true}
+      reason: {type: text, required: false}
+      actorId: {type: uuid, required: true}
+
+  ReleaseProject:
+    description: 围绕一个或多个 IP 权益开展的一次商业化发布项目
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      projectName: {type: string, required: true}
+      stage: {type: enum, ref: lifecycleStage, required: true}
+      plannedLaunchAt: {type: date, required: false}
+      ownerId: {type: uuid, required: true}
+
+  SKU:
+    description: 可生产、入库和销售的商品规格
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      skuCode: {type: string, required: true}
+      productName: {type: string, required: true}
+      category: {type: string, required: true, status: TBD}
+
+  MilestoneEvidence:
+    description: 设计、审批、打样、生产等里程碑的完成证据
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      milestoneType: {type: string, required: true, status: TBD}
+      status: {type: string, required: true, status: TBD}
+      occurredAt: {type: datetime, required: false}
+      evidenceAnchorId: {type: uuid, required: false}
+
+  Document:
+    description: 原始合同、表格、图片、邮件或审批材料的不可变版本
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      uri: {type: uri, required: true, security: confidential}
+      sha256: {type: string, required: true, immutable: true}
+      mediaType: {type: string, required: true}
+      version: {type: string, required: true}
+      capturedAt: {type: datetime, required: true}
+
+  EvidenceAnchor:
+    description: 事实指向原始文档页码、段落、表格单元格或图片区域的锚点
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      documentId: {type: uuid, required: true}
+      locatorType: {type: string, required: true}
+      locator: {type: json, required: true}
+      excerptHash: {type: string, required: false}
+
+  FactAssertion:
+    description: 对业务事实的带来源断言，可被确认、驳回或替代
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      subjectId: {type: uuid, required: true}
+      predicate: {type: string, required: true}
+      objectValue: {type: json, required: true}
+      status: {type: enum, ref: factStatus, required: true}
+      confidence: {type: decimal, required: false}
+      evidenceAnchorId: {type: uuid, required: true}
+      validFrom: {type: datetime, required: false}
+      validTo: {type: datetime, required: false}
+      recordedAt: {type: datetime, required: true}
+      assertedBy: {type: string, required: true}
+      supersedesFactId: {type: uuid, required: false}
+
+  RiskFinding:
+    description: 规则或人工识别的可解决风险发现
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      riskType: {type: string, required: true, status: TBD}
+      severity: {type: enum, ref: riskSeverity, required: true}
+      status: {type: enum, ref: riskStatus, required: true}
+      explanation: {type: text, required: true}
+      evidenceAnchorIds: {type: list<uuid>, required: false}
+
+  MarketObservation:
+    description: 二级市场（如卡淘）成交与流动性观察，按 SKU/人物/IP 与时间窗口聚合；不会自动修改主档
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      source: {type: string, required: true, status: TBD}
+      observedAt: {type: datetime, required: true}
+      windowDays: {type: integer, required: true}
+      currency: {type: string, required: true}
+      salePrice: {type: decimal, required: false}
+      volume: {type: integer, required: false}
+      uniqueBuyers: {type: integer, required: false}
+      premiumRate: {type: decimal, required: false}
+      turnoverRate: {type: decimal, required: false}
+      spread: {type: decimal, required: false}
+      notes: {type: text, required: false}
+
+  ReleaseRecommendation:
+    description: 由市场观察生成的发行建议；只能进入人工评审，不得自动改印量、限编或价格
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      recommendationType: {type: enum, ref: recommendationType, required: true}
+      status: {type: enum, ref: recommendationStatus, required: true}
+      rationale: {type: text, required: true}
+      metricSnapshot: {type: json, required: false}
+      createdBy: {type: string, required: true}
+      createdAt: {type: datetime, required: true}
+      reviewComment: {type: text, required: false}
+      reviewedAt: {type: datetime, required: false}

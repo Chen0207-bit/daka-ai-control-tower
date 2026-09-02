@@ -1,0 +1,31 @@
+valueSets:
+  lifecycleStage:
+    values: [sourcing, contracting, designing, approval, sampling, production, warehousing, selling, settlement]
+    status: draft
+  factStatus:
+    values: [proposed, verified, rejected, superseded]
+    status: proposed
+  contractStatus:
+    values: [draft, under_review, active, expired, terminated]
+    status: draft
+  paymentStatus:
+    values: [planned, due, paid, overdue, waived, disputed]
+    status: draft
+  signatureMovementType:
+    values: [granted, received, inspected, allocated, consumed, returned, adjusted]
+    status: draft
+  securityLevel:
+    values: [internal, confidential, highly_confidential]
+    status: draft
+  recommendationType:
+    values: [reprint, price_adjust, hold, delist]
+    status: draft
+  recommendationStatus:
+    values: [suggested, in_review, approved, rejected]
+    status: draft
+  riskStatus:
+    values: [open, acknowledged, resolved, dismissed]
+    status: draft
+  riskSeverity:
+    values: [info, low, medium, high, critical]
+    status: draft

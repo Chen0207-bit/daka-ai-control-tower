@@ -1,0 +1,23 @@
+{
+  "name": "@daka/ontology-dsl",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "validate": "tsx src/cli.ts validate ../../ontology/schema/v1"
+  },
+  "dependencies": {
+    "yaml": "^2.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "tsx": "^4.20.0",
+    "typescript": "5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,130 @@
+actions:
+  uploadContract:
+    target: Contract
+    handler: contract.upload
+    actorRoles: [legalOperator]
+    inputs:
+      documentUri: {type: uri, required: true}
+      sha256: {type: string, required: true}
+      title: {type: string, required: true}
+    preconditions: []
+    effects: [createDocumentVersion, createContractDraft, appendAuditEvent]
+    description: 上传合同原文并创建合同草稿
+
+  extractContractCandidates:
+    target: Contract
+    handler: extraction.contractCandidates
+    actorRoles: [systemAgent]
+    inputs:
+      contractId: {type: uuid, required: true}
+      extractorVersion: {type: string, required: true}
+    preconditions:
+      - {op: exists, path: target.documentId}
+    effects: [createProposedFactAssertions, attachEvidenceAnchors, appendAuditEvent]
+    description: 从合同文档抽取候选事实；只能产生 proposed
+
+  confirmFact:
+    target: FactAssertion
+    handler: fact.confirm
+    actorRoles: [dataSteward, legalReviewer, financeReviewer]
+    inputs:
+      factId: {type: uuid, required: true}
+      reviewComment: {type: text, required: false}
+    preconditions:
+      - {op: eq, path: target.status, value: proposed}
+      - {op: exists, path: target.evidenceAnchorId}
+    effects: [setFactVerified, materializeCanonicalValue, appendAuditEvent]
+    description: 人工确认候选事实为 verified
+
+  rejectFact:
+    target: FactAssertion
+    handler: fact.reject
+    actorRoles: [dataSteward, legalReviewer, financeReviewer]
+    inputs:
+      factId: {type: uuid, required: true}
+      rejectionReason: {type: text, required: true}
+    preconditions:
+      - {op: eq, path: target.status, value: proposed}
+    effects: [setFactRejected, appendAuditEvent]
+    description: 驳回候选事实
+
+  supersedeFact:
+    target: FactAssertion
+    handler: fact.supersede
+    actorRoles: [dataSteward]
+    inputs:
+      oldFactId: {type: uuid, required: true}
+      replacementFact: {type: json, required: true}
+      reason: {type: text, required: true}
+    preconditions:
+      - {op: eq, path: target.status, value: verified}
+    effects: [markOldSuperseded, createVerifiedReplacement, appendAuditEvent]
+    description: 以新事实替代已确认事实（双时态）
+
+  recordPayment:
+    target: PaymentSchedule
+    handler: payment.record
+    actorRoles: [financeOperator]
+    inputs:
+      amount: {type: decimal, required: true}
+      currency: {type: string, required: true}
+      paidAt: {type: datetime, required: true}
+      transactionReference: {type: string, required: false}
+    preconditions:
+      - {op: gt, path: input.amount, value: 0}
+      - {op: eq, path: input.currency, valuePath: target.currency}
+    effects: [createPaymentEvent, recalculateScheduleStatus, appendAuditEvent]
+    description: 登记一笔实付并重算计划状态
+
+  receiveSignatureLot:
+    target: SignatureEntitlement
+    handler: signature.receiveLot
+    actorRoles: [ipOperations]
+    inputs:
+      lotNumber: {type: string, required: true}
+      quantity: {type: integer, required: true}
+      receivedAt: {type: datetime, required: true}
+      evidenceAnchorId: {type: uuid, required: true}
+    preconditions:
+      - {op: gt, path: input.quantity, value: 0}
+    effects: [createSignatureLot, appendReceivedMovement, recalculateSignatureBalance, appendAuditEvent]
+    description: 签名批次入库
+
+  allocateSignatures:
+    target: SignatureLot
+    handler: signature.allocate
+    actorRoles: [ipOperations]
+    inputs:
+      releaseProjectId: {type: uuid, required: true}
+      quantity: {type: integer, required: true}
+      reason: {type: text, required: false}
+    preconditions:
+      - {op: gt, path: input.quantity, value: 0}
+      - {op: gte, path: target.availableQuantity, valuePath: input.quantity}
+    effects: [appendAllocatedMovement, recalculateSignatureBalance, appendAuditEvent]
+    description: 从可用桶分配签名到发行项目；服务端阻断超额
+
+  resolveContractRisk:
+    target: RiskFinding
+    handler: risk.resolve
+    actorRoles: [legalReviewer]
+    inputs:
+      resolution: {type: text, required: true}
+      evidenceAnchorId: {type: uuid, required: true}
+    preconditions:
+      - {op: eq, path: target.status, value: open}
+    effects: [setRiskResolved, appendAuditEvent]
+    description: 法务关闭合同风险
+
+  reviewReleaseRecommendation:
+    target: ReleaseRecommendation
+    handler: market.reviewRecommendation
+    actorRoles: [executiveViewer, ipOperations]
+    inputs:
+      decision: {type: enum, ref: recommendationStatus, required: true}
+      reviewComment: {type: text, required: false}
+    preconditions:
+      - {op: in, path: target.status, value: [suggested, in_review]}
+      - {op: in, path: input.decision, value: [approved, rejected]}
+    effects: [setRecommendationStatus, appendAuditEvent]
+    description: 人工评审发行建议；不得自动改印量或价格

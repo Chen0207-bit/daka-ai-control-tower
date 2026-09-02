@@ -1,0 +1,33 @@
+connectors:
+  yamlContractSeed:
+    kind: yaml
+    description: YAML Data Pack 模拟合同/权益/义务批次
+    checkpoint: batchId
+    mapping:
+      Contract: {idField: contractNumber}
+      RightsGrant: {idField: rightType}
+      Obligation: {idField: obligationType}
+
+  yamlPaymentBatch:
+    kind: yaml
+    description: YAML Data Pack 模拟付款计划与实付批次
+    checkpoint: batchId
+    mapping:
+      PaymentSchedule: {idField: id}
+      Payment: {idField: transactionReference}
+
+  yamlSignatureBatch:
+    kind: yaml
+    description: YAML Data Pack 模拟签名额度/批次/流转批次
+    checkpoint: batchId
+    mapping:
+      SignatureEntitlement: {idField: id}
+      SignatureLot: {idField: lotNumber}
+      SignatureMovement: {idField: id}
+
+  yamlMarketBatch:
+    kind: yaml
+    description: YAML Data Pack 模拟二级市场观察批次
+    checkpoint: batchId
+    mapping:
+      MarketObservation: {idField: id}

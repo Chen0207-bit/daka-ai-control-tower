@@ -1,0 +1,26 @@
+projections:
+  contractRiskList:
+    basedOn: [Contract, RightsGrant, Obligation, RiskFinding, EvidenceAnchor]
+    description: 合同风险清单：范围缺口、证据缺失、义务临期
+
+  paymentCalendar:
+    basedOn: [Contract, PaymentSchedule, Payment]
+    description: 付款日历：应付、已付、待付、逾期
+    metrics:
+      unsettledAmount: {type: decimal, description: 未结清金额}
+      overdueAmount: {type: decimal, description: 逾期金额}
+
+  signatureOverview:
+    basedOn: [SignatureEntitlement, SignatureLot, SignatureMovement, ReleaseProject]
+    description: 签名全景：合同额度与实物状态桶（在途/待质检/可用/已分配/已消耗/退回）
+    metrics:
+      availableQuantity: {type: integer, description: 可用数量}
+      allocatedQuantity: {type: integer, description: 已分配数量}
+
+  bossActionInbox:
+    basedOn: [RiskFinding, PaymentSchedule, ReleaseRecommendation]
+    description: 老板行动项：高严重度风险、逾期付款、待评审发行建议
+
+  marketRecommendation:
+    basedOn: [MarketObservation, ReleaseRecommendation, SKU, Talent]
+    description: 二级市场观察与发行建议（口径可见，建议须人工评审）

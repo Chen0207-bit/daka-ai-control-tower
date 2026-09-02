@@ -1,0 +1,5 @@
+meta:
+  name: daka-business-ontology
+  version: 1.0.0
+  dsl: "1"
+  description: DAKA IP 商业化生命周期的业务本体（由 daka.v0.1.yaml 0.1.0-draft 迁移；讨论注记见 ontology/spec/v1.md 第 10 节）

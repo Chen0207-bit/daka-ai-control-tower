@@ -1,0 +1,9 @@
+interfaces:
+  IPAsset:
+    description: 可被授权和商业化的长期 IP 资产接口
+    properties:
+      id: {type: uuid, required: true, immutable: true}
+      canonicalName: {type: string, required: true}
+      alternateNames: {type: list<string>, required: false}
+      lifecycleStatus: {type: string, required: false, status: TBD}
+      sourceSystem: {type: string, required: true}

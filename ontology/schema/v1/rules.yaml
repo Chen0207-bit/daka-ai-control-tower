@@ -1,0 +1,63 @@
+rules:
+  paymentOverdue:
+    description: 付款计划已过到期日且未结清金额大于零
+    severity: high
+    scope: [PaymentSchedule]
+    when:
+      op: all
+      args:
+        - {op: dateBefore, path: schedule.dueAt, value: now}
+        - {op: gt, path: schedule.unsettledAmount, value: 0}
+    result: createOrUpdateRiskFinding
+
+  rightsScopeGap:
+    description: 发行项目的范围（地域/渠道/品类/期限）未被任何有效 RightsGrant 覆盖
+    severity: critical
+    scope: [ReleaseProject]
+    when:
+      op: missing
+      path: releaseProject.activeRightsCoverage
+    result: blockReleaseAndCreateRiskFinding
+
+  signatureBalanceNegative:
+    description: 推导的可用签名数量低于零
+    severity: critical
+    scope: [SignatureLot]
+    when:
+      op: lt
+      path: signatureLot.availableQuantity
+      value: 0
+    result: blockMovementAndCreateRiskFinding
+
+  verifiedFactMissingEvidence:
+    description: verified 事实缺少证据锚点
+    severity: critical
+    scope: [FactAssertion]
+    when:
+      op: all
+      args:
+        - {op: eq, path: fact.status, value: verified}
+        - {op: missing, path: fact.evidenceAnchorId}
+    result: rejectTransition
+
+  affiliationTimeConflict:
+    description: 声称的归属关系在权益有效期内不成立
+    severity: medium
+    scope: [Affiliation, RightsGrant]
+    when:
+      op: all
+      args:
+        - {op: exists, path: affiliation.validFrom}
+        - {op: dateAfter, path: affiliation.validFrom, valuePath: rightsGrant.validTo}
+    result: createRiskFindingForReview
+
+  marketPremiumSpike:
+    description: 二级市场溢价率超过演示阈值时生成发行建议候选
+    severity: medium
+    scope: [MarketObservation]
+    when:
+      op: all
+      args:
+        - {op: gte, path: observation.premiumRate, value: 0.5}
+        - {op: gte, path: observation.volume, value: 100}
+    result: createReleaseRecommendationCandidate

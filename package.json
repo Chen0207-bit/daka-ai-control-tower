@@ -19,7 +19,8 @@
     "typecheck": "tsc --noEmit",
     "test": "pnpm run build",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "ontology:validate": "pnpm --filter @daka/ontology-dsl run validate"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
