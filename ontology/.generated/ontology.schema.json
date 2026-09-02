@@ -1,0 +1,876 @@
+{
+  "Affiliation": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "affiliationType": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "validFrom": {
+        "format": "date",
+        "type": "string"
+      },
+      "validTo": {
+        "format": "date",
+        "type": "string"
+      }
+    },
+    "required": [
+      "affiliationType",
+      "id"
+    ],
+    "title": "Affiliation",
+    "type": "object"
+  },
+  "Contract": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "contractNumber": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "documentId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "effectiveFrom": {
+        "format": "date",
+        "type": "string"
+      },
+      "effectiveTo": {
+        "format": "date",
+        "type": "string"
+      },
+      "governingLaw": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "signedAt": {
+        "format": "date",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "active",
+          "draft",
+          "expired",
+          "terminated",
+          "under_review"
+        ],
+        "type": "string"
+      },
+      "title": {
+        "maxLength": 512,
+        "type": "string"
+      }
+    },
+    "required": [
+      "documentId",
+      "id",
+      "status",
+      "title"
+    ],
+    "title": "Contract",
+    "type": "object"
+  },
+  "Document": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "capturedAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "mediaType": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "sha256": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "uri": {
+        "format": "uri",
+        "type": "string"
+      },
+      "version": {
+        "maxLength": 512,
+        "type": "string"
+      }
+    },
+    "required": [
+      "capturedAt",
+      "id",
+      "mediaType",
+      "sha256",
+      "uri",
+      "version"
+    ],
+    "title": "Document",
+    "type": "object"
+  },
+  "EvidenceAnchor": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "documentId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "excerptHash": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "locator": {},
+      "locatorType": {
+        "maxLength": 512,
+        "type": "string"
+      }
+    },
+    "required": [
+      "documentId",
+      "id",
+      "locator",
+      "locatorType"
+    ],
+    "title": "EvidenceAnchor",
+    "type": "object"
+  },
+  "FactAssertion": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "assertedBy": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "confidence": {
+        "pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+        "type": "string"
+      },
+      "evidenceAnchorId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "objectValue": {},
+      "predicate": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "recordedAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "proposed",
+          "rejected",
+          "superseded",
+          "verified"
+        ],
+        "type": "string"
+      },
+      "subjectId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "supersedesFactId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "validFrom": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "validTo": {
+        "format": "date-time",
+        "type": "string"
+      }
+    },
+    "required": [
+      "assertedBy",
+      "evidenceAnchorId",
+      "id",
+      "objectValue",
+      "predicate",
+      "recordedAt",
+      "status",
+      "subjectId"
+    ],
+    "title": "FactAssertion",
+    "type": "object"
+  },
+  "FootballClub": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "countryOrRegion": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "league": {
+        "maxLength": 512,
+        "type": "string"
+      }
+    },
+    "required": [],
+    "title": "FootballClub",
+    "type": "object"
+  },
+  "MarketObservation": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "currency": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "notes": {
+        "type": "string"
+      },
+      "observedAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "premiumRate": {
+        "pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+        "type": "string"
+      },
+      "salePrice": {
+        "pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+        "type": "string"
+      },
+      "source": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "spread": {
+        "pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+        "type": "string"
+      },
+      "turnoverRate": {
+        "pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+        "type": "string"
+      },
+      "uniqueBuyers": {
+        "type": "integer"
+      },
+      "volume": {
+        "type": "integer"
+      },
+      "windowDays": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "currency",
+      "id",
+      "observedAt",
+      "source",
+      "windowDays"
+    ],
+    "title": "MarketObservation",
+    "type": "object"
+  },
+  "MilestoneEvidence": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "evidenceAnchorId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "milestoneType": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "occurredAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "status": {
+        "maxLength": 512,
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "milestoneType",
+      "status"
+    ],
+    "title": "MilestoneEvidence",
+    "type": "object"
+  },
+  "Obligation": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "completionStatus": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      },
+      "dueAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "obligationType": {
+        "maxLength": 512,
+        "type": "string"
+      }
+    },
+    "required": [
+      "completionStatus",
+      "description",
+      "id",
+      "obligationType"
+    ],
+    "title": "Obligation",
+    "type": "object"
+  },
+  "Party": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "legalName": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "partyType": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "registrationIdentifier": {
+        "maxLength": 512,
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "legalName",
+      "partyType"
+    ],
+    "title": "Party",
+    "type": "object"
+  },
+  "Payment": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "amount": {
+        "pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+        "type": "string"
+      },
+      "currency": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "paidAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "transactionReference": {
+        "maxLength": 512,
+        "type": "string"
+      }
+    },
+    "required": [
+      "amount",
+      "currency",
+      "id",
+      "paidAt"
+    ],
+    "title": "Payment",
+    "type": "object"
+  },
+  "PaymentSchedule": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "amount": {
+        "pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+        "type": "string"
+      },
+      "currency": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "dueAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "disputed",
+          "due",
+          "overdue",
+          "paid",
+          "planned",
+          "waived"
+        ],
+        "type": "string"
+      },
+      "triggerCondition": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "amount",
+      "currency",
+      "dueAt",
+      "id",
+      "status"
+    ],
+    "title": "PaymentSchedule",
+    "type": "object"
+  },
+  "ReleaseProject": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "ownerId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "plannedLaunchAt": {
+        "format": "date",
+        "type": "string"
+      },
+      "projectName": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "stage": {
+        "enum": [
+          "approval",
+          "contracting",
+          "designing",
+          "production",
+          "sampling",
+          "selling",
+          "settlement",
+          "sourcing",
+          "warehousing"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "ownerId",
+      "projectName",
+      "stage"
+    ],
+    "title": "ReleaseProject",
+    "type": "object"
+  },
+  "ReleaseRecommendation": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "createdAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "createdBy": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "metricSnapshot": {},
+      "rationale": {
+        "type": "string"
+      },
+      "recommendationType": {
+        "enum": [
+          "delist",
+          "hold",
+          "price_adjust",
+          "reprint"
+        ],
+        "type": "string"
+      },
+      "reviewComment": {
+        "type": "string"
+      },
+      "reviewedAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "approved",
+          "in_review",
+          "rejected",
+          "suggested"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "createdAt",
+      "createdBy",
+      "id",
+      "rationale",
+      "recommendationType",
+      "status"
+    ],
+    "title": "ReleaseRecommendation",
+    "type": "object"
+  },
+  "RightsGrant": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "approvalRequired": {
+        "type": "boolean"
+      },
+      "channel": {
+        "items": {
+          "maxLength": 512,
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "exclusivity": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "productCategory": {
+        "items": {
+          "maxLength": 512,
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "rightType": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "territory": {
+        "items": {
+          "maxLength": 512,
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "validFrom": {
+        "format": "date",
+        "type": "string"
+      },
+      "validTo": {
+        "format": "date",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "rightType",
+      "validFrom",
+      "validTo"
+    ],
+    "title": "RightsGrant",
+    "type": "object"
+  },
+  "RiskFinding": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "evidenceAnchorIds": {
+        "items": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "explanation": {
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "riskType": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "severity": {
+        "enum": [
+          "critical",
+          "high",
+          "info",
+          "low",
+          "medium"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "acknowledged",
+          "dismissed",
+          "open",
+          "resolved"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "explanation",
+      "id",
+      "riskType",
+      "severity",
+      "status"
+    ],
+    "title": "RiskFinding",
+    "type": "object"
+  },
+  "SKU": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "category": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "productName": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "skuCode": {
+        "maxLength": 512,
+        "type": "string"
+      }
+    },
+    "required": [
+      "category",
+      "id",
+      "productName",
+      "skuCode"
+    ],
+    "title": "SKU",
+    "type": "object"
+  },
+  "SignatureEntitlement": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "constraints": {
+        "type": "string"
+      },
+      "grantedQuantity": {
+        "type": "integer"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "unit": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "validFrom": {
+        "format": "date",
+        "type": "string"
+      },
+      "validTo": {
+        "format": "date",
+        "type": "string"
+      }
+    },
+    "required": [
+      "grantedQuantity",
+      "id",
+      "unit"
+    ],
+    "title": "SignatureEntitlement",
+    "type": "object"
+  },
+  "SignatureLot": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "lotNumber": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "qualityStatus": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "receivedAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "receivedQuantity": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "lotNumber",
+      "receivedAt",
+      "receivedQuantity"
+    ],
+    "title": "SignatureLot",
+    "type": "object"
+  },
+  "SignatureMovement": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "actorId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "movementType": {
+        "enum": [
+          "adjusted",
+          "allocated",
+          "consumed",
+          "granted",
+          "inspected",
+          "received",
+          "returned"
+        ],
+        "type": "string"
+      },
+      "occurredAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "quantity": {
+        "type": "integer"
+      },
+      "reason": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "actorId",
+      "id",
+      "movementType",
+      "occurredAt",
+      "quantity"
+    ],
+    "title": "SignatureMovement",
+    "type": "object"
+  },
+  "TVSeries": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "productionCompany": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "releaseYear": {
+        "type": "integer"
+      }
+    },
+    "required": [],
+    "title": "TVSeries",
+    "type": "object"
+  },
+  "Talent": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "alternateNames": {
+        "items": {
+          "maxLength": 512,
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "canonicalName": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "identityIdentifier": {
+        "maxLength": 512,
+        "type": "string"
+      }
+    },
+    "required": [
+      "canonicalName",
+      "id"
+    ],
+    "title": "Talent",
+    "type": "object"
+  }
+}

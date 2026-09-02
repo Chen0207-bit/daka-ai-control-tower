@@ -28,9 +28,9 @@ function codes(result: ReturnType<typeof validateSchemaDir>): string[] {
 }
 
 describe("validateSchemaDir：真实 DAKA schema", () => {
-  it("ontology/schema/v1 无诊断，exitCode 0", () => {
+  it("ontology/schema/v1 无 error（允许 TBD warning），exitCode 0", () => {
     const result = validateSchemaDir(REAL_SCHEMA_DIR);
-    expect(result.diagnostics).toEqual([]);
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
     expect(result.exitCode).toBe(0);
   });
 });

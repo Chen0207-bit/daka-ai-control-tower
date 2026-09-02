@@ -81,6 +81,9 @@ objectTypes:
       dueAt: {type: datetime, required: true}
       triggerCondition: {type: text, required: false}
       status: {type: enum, ref: paymentStatus, required: true}
+    derived:
+      settledAmount: {type: decimal, description: 已分摊实付合计（由 Payment 推导）}
+      unsettledAmount: {type: decimal, description: 未结清金额 = amount - settledAmount}
 
   Payment:
     description: 实际发生的付款事件
@@ -109,6 +112,10 @@ objectTypes:
       receivedQuantity: {type: integer, required: true}
       receivedAt: {type: datetime, required: true}
       qualityStatus: {type: string, required: false, status: TBD}
+    derived:
+      availableQuantity: {type: integer, description: 可用桶余额（Movement 守恒推导）}
+      allocatedQuantity: {type: integer, description: 已分配未消耗}
+      consumedQuantity: {type: integer, description: 已消耗}
 
   SignatureMovement:
     description: 签名额度或实物库存的不可变流转事件
@@ -128,6 +135,8 @@ objectTypes:
       stage: {type: enum, ref: lifecycleStage, required: true}
       plannedLaunchAt: {type: date, required: false}
       ownerId: {type: uuid, required: true}
+    derived:
+      activeRightsCoverage: {type: list<uuid>, description: 当前覆盖项目范围的有效 RightsGrant 集合（rule/投影推导）}
 
   SKU:
     description: 可生产、入库和销售的商品规格

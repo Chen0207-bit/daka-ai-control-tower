@@ -258,6 +258,7 @@ function validateTypeSection(ctx: Ctx, section: "interfaces" | "objectTypes", de
       }
     }
     validateProperties(ctx, path, def.properties);
+    if (section === "objectTypes") validateProperties(ctx, path, def.derived, "derived");
   }
 }
 

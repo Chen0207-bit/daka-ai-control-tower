@@ -1,10 +1,14 @@
 import { formatDiagnostic, type Diagnostic } from "./diagnostics";
+import type { MergedSchema } from "./model";
 import { loadSchemaDir } from "./parse";
+import { validateSemantics } from "./semantic";
 import { validateSyntax } from "./syntax";
 
 export interface ValidateResult {
   diagnostics: Diagnostic[];
-  /** 进程退出码：0 = 无 error，1 = 有 error，2 = 路径不可用等运行错误 */
+  /** 语法+语义校验通过时的合并文档；有 error 时为 undefined */
+  merged?: MergedSchema;
+  /** 进程退出码：0 = 无 error（允许 warning），1 = 有 error，2 = 路径不可用等运行错误 */
   exitCode: 0 | 1 | 2;
 }
 
@@ -28,28 +32,19 @@ export function validateSchemaDir(dir: string): ValidateResult {
       exitCode: 2,
     };
   }
-  const diagnostics = [...files.flatMap((f) => f.diagnostics), ...validateSyntax(files)];
+  const parseDiags = files.flatMap((f) => f.diagnostics);
+  const syntaxDiags = validateSyntax(files);
+  const hasSyntaxError = [...parseDiags, ...syntaxDiags].some((d) => d.severity === "error");
+  if (hasSyntaxError) {
+    return { diagnostics: [...parseDiags, ...syntaxDiags], exitCode: 1 };
+  }
+  const { merged, diagnostics: semanticDiags } = validateSemantics(files);
+  const diagnostics = [...parseDiags, ...syntaxDiags, ...semanticDiags];
   const hasError = diagnostics.some((d) => d.severity === "error");
-  return { diagnostics, exitCode: hasError ? 1 : 0 };
+  return { diagnostics, merged, exitCode: hasError ? 1 : 0 };
 }
 
 export function renderDiagnostics(result: ValidateResult): string {
   if (result.diagnostics.length === 0) return "OK: 无诊断";
   return result.diagnostics.map(formatDiagnostic).join("\n");
-}
-
-export function runCli(argv: string[]): number {
-  const [command, target] = argv;
-  if (command !== "validate" || !target) {
-    process.stderr.write("usage: ontology-dsl validate <schema-dir>\n");
-    return 2;
-  }
-  const result = validateSchemaDir(target);
-  const text = renderDiagnostics(result);
-  if (result.exitCode === 0) {
-    process.stdout.write(`${text}\n`);
-  } else {
-    process.stderr.write(`${text}\n`);
-  }
-  return result.exitCode;
 }

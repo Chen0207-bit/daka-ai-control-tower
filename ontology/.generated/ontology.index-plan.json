@@ -1,0 +1,249 @@
+{
+  "generator": "@daka/ontology-dsl index-plan v1",
+  "indexes": [
+    {
+      "column": "validFrom",
+      "kind": "btree",
+      "objectType": "Affiliation",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "validTo",
+      "kind": "btree",
+      "objectType": "Affiliation",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "documentId",
+      "kind": "btree",
+      "objectType": "Contract",
+      "reason": "foreign_reference"
+    },
+    {
+      "column": "effectiveFrom",
+      "kind": "btree",
+      "objectType": "Contract",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "effectiveTo",
+      "kind": "btree",
+      "objectType": "Contract",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "signedAt",
+      "kind": "btree",
+      "objectType": "Contract",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "status",
+      "kind": "btree",
+      "objectType": "Contract",
+      "reason": "enum_status"
+    },
+    {
+      "column": "capturedAt",
+      "kind": "btree",
+      "objectType": "Document",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "documentId",
+      "kind": "btree",
+      "objectType": "EvidenceAnchor",
+      "reason": "foreign_reference"
+    },
+    {
+      "column": "evidenceAnchorId",
+      "kind": "btree",
+      "objectType": "FactAssertion",
+      "reason": "foreign_reference"
+    },
+    {
+      "column": "recordedAt",
+      "kind": "btree",
+      "objectType": "FactAssertion",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "status",
+      "kind": "btree",
+      "objectType": "FactAssertion",
+      "reason": "enum_status"
+    },
+    {
+      "column": "subjectId",
+      "kind": "btree",
+      "objectType": "FactAssertion",
+      "reason": "foreign_reference"
+    },
+    {
+      "column": "supersedesFactId",
+      "kind": "btree",
+      "objectType": "FactAssertion",
+      "reason": "foreign_reference"
+    },
+    {
+      "column": "validFrom",
+      "kind": "btree",
+      "objectType": "FactAssertion",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "validTo",
+      "kind": "btree",
+      "objectType": "FactAssertion",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "observedAt",
+      "kind": "btree",
+      "objectType": "MarketObservation",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "evidenceAnchorId",
+      "kind": "btree",
+      "objectType": "MilestoneEvidence",
+      "reason": "foreign_reference"
+    },
+    {
+      "column": "occurredAt",
+      "kind": "btree",
+      "objectType": "MilestoneEvidence",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "dueAt",
+      "kind": "btree",
+      "objectType": "Obligation",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "paidAt",
+      "kind": "btree",
+      "objectType": "Payment",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "dueAt",
+      "kind": "btree",
+      "objectType": "PaymentSchedule",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "status",
+      "kind": "btree",
+      "objectType": "PaymentSchedule",
+      "reason": "enum_status"
+    },
+    {
+      "column": "ownerId",
+      "kind": "btree",
+      "objectType": "ReleaseProject",
+      "reason": "foreign_reference"
+    },
+    {
+      "column": "plannedLaunchAt",
+      "kind": "btree",
+      "objectType": "ReleaseProject",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "stage",
+      "kind": "btree",
+      "objectType": "ReleaseProject",
+      "reason": "enum_status"
+    },
+    {
+      "column": "createdAt",
+      "kind": "btree",
+      "objectType": "ReleaseRecommendation",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "recommendationType",
+      "kind": "btree",
+      "objectType": "ReleaseRecommendation",
+      "reason": "enum_status"
+    },
+    {
+      "column": "reviewedAt",
+      "kind": "btree",
+      "objectType": "ReleaseRecommendation",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "status",
+      "kind": "btree",
+      "objectType": "ReleaseRecommendation",
+      "reason": "enum_status"
+    },
+    {
+      "column": "validFrom",
+      "kind": "btree",
+      "objectType": "RightsGrant",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "validTo",
+      "kind": "btree",
+      "objectType": "RightsGrant",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "severity",
+      "kind": "btree",
+      "objectType": "RiskFinding",
+      "reason": "enum_status"
+    },
+    {
+      "column": "status",
+      "kind": "btree",
+      "objectType": "RiskFinding",
+      "reason": "enum_status"
+    },
+    {
+      "column": "validFrom",
+      "kind": "btree",
+      "objectType": "SignatureEntitlement",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "validTo",
+      "kind": "btree",
+      "objectType": "SignatureEntitlement",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "receivedAt",
+      "kind": "btree",
+      "objectType": "SignatureLot",
+      "reason": "temporal_query"
+    },
+    {
+      "column": "actorId",
+      "kind": "btree",
+      "objectType": "SignatureMovement",
+      "reason": "foreign_reference"
+    },
+    {
+      "column": "movementType",
+      "kind": "btree",
+      "objectType": "SignatureMovement",
+      "reason": "enum_status"
+    },
+    {
+      "column": "occurredAt",
+      "kind": "btree",
+      "objectType": "SignatureMovement",
+      "reason": "temporal_query"
+    }
+  ],
+  "tenantIsolation": [
+    "tenant_id",
+    "workspace_id"
+  ]
+}

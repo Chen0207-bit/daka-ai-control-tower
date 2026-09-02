@@ -1,0 +1,745 @@
+{
+  "info": {
+    "title": "daka-business-ontology Ontology Runtime API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health/live": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "liveness"
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "readiness"
+      }
+    },
+    "/v1/actions/allocateSignatures/execute": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "policy denial"
+          },
+          "409": {
+            "description": "version conflict"
+          },
+          "422": {
+            "description": "precondition failed"
+          }
+        },
+        "summary": "执行 allocateSignatures（幂等键必需）"
+      }
+    },
+    "/v1/actions/confirmFact/execute": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "policy denial"
+          },
+          "409": {
+            "description": "version conflict"
+          },
+          "422": {
+            "description": "precondition failed"
+          }
+        },
+        "summary": "执行 confirmFact（幂等键必需）"
+      }
+    },
+    "/v1/actions/extractContractCandidates/execute": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "policy denial"
+          },
+          "409": {
+            "description": "version conflict"
+          },
+          "422": {
+            "description": "precondition failed"
+          }
+        },
+        "summary": "执行 extractContractCandidates（幂等键必需）"
+      }
+    },
+    "/v1/actions/receiveSignatureLot/execute": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "policy denial"
+          },
+          "409": {
+            "description": "version conflict"
+          },
+          "422": {
+            "description": "precondition failed"
+          }
+        },
+        "summary": "执行 receiveSignatureLot（幂等键必需）"
+      }
+    },
+    "/v1/actions/recordPayment/execute": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "policy denial"
+          },
+          "409": {
+            "description": "version conflict"
+          },
+          "422": {
+            "description": "precondition failed"
+          }
+        },
+        "summary": "执行 recordPayment（幂等键必需）"
+      }
+    },
+    "/v1/actions/rejectFact/execute": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "policy denial"
+          },
+          "409": {
+            "description": "version conflict"
+          },
+          "422": {
+            "description": "precondition failed"
+          }
+        },
+        "summary": "执行 rejectFact（幂等键必需）"
+      }
+    },
+    "/v1/actions/resolveContractRisk/execute": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "policy denial"
+          },
+          "409": {
+            "description": "version conflict"
+          },
+          "422": {
+            "description": "precondition failed"
+          }
+        },
+        "summary": "执行 resolveContractRisk（幂等键必需）"
+      }
+    },
+    "/v1/actions/reviewReleaseRecommendation/execute": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "policy denial"
+          },
+          "409": {
+            "description": "version conflict"
+          },
+          "422": {
+            "description": "precondition failed"
+          }
+        },
+        "summary": "执行 reviewReleaseRecommendation（幂等键必需）"
+      }
+    },
+    "/v1/actions/supersedeFact/execute": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "policy denial"
+          },
+          "409": {
+            "description": "version conflict"
+          },
+          "422": {
+            "description": "precondition failed"
+          }
+        },
+        "summary": "执行 supersedeFact（幂等键必需）"
+      }
+    },
+    "/v1/actions/uploadContract/execute": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "policy denial"
+          },
+          "409": {
+            "description": "version conflict"
+          },
+          "422": {
+            "description": "precondition failed"
+          }
+        },
+        "summary": "执行 uploadContract（幂等键必需）"
+      }
+    },
+    "/v1/audit": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "审计事件查询"
+      }
+    },
+    "/v1/facts/{id}/reject": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "驳回 proposed 事实"
+      }
+    },
+    "/v1/facts/{id}/supersede": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "替代已确认事实"
+      }
+    },
+    "/v1/facts/{id}/verify": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "确认 proposed 事实"
+      }
+    },
+    "/v1/ingest/apply": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "Data Pack 事务性导入"
+      }
+    },
+    "/v1/ingest/jobs/{id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "同步任务状态"
+      }
+    },
+    "/v1/ingest/validate": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "Data Pack 校验（dry-run）"
+      }
+    },
+    "/v1/meta/ontology": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "Ontology manifest 元信息"
+      }
+    },
+    "/v1/objects/Affiliation": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 Affiliation"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 Affiliation"
+      }
+    },
+    "/v1/objects/Contract": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 Contract"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 Contract"
+      }
+    },
+    "/v1/objects/Document": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 Document"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 Document"
+      }
+    },
+    "/v1/objects/EvidenceAnchor": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 EvidenceAnchor"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 EvidenceAnchor"
+      }
+    },
+    "/v1/objects/FactAssertion": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 FactAssertion"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 FactAssertion"
+      }
+    },
+    "/v1/objects/FootballClub": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 FootballClub"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 FootballClub"
+      }
+    },
+    "/v1/objects/MarketObservation": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 MarketObservation"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 MarketObservation"
+      }
+    },
+    "/v1/objects/MilestoneEvidence": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 MilestoneEvidence"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 MilestoneEvidence"
+      }
+    },
+    "/v1/objects/Obligation": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 Obligation"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 Obligation"
+      }
+    },
+    "/v1/objects/Party": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 Party"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 Party"
+      }
+    },
+    "/v1/objects/Payment": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 Payment"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 Payment"
+      }
+    },
+    "/v1/objects/PaymentSchedule": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 PaymentSchedule"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 PaymentSchedule"
+      }
+    },
+    "/v1/objects/ReleaseProject": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 ReleaseProject"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 ReleaseProject"
+      }
+    },
+    "/v1/objects/ReleaseRecommendation": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 ReleaseRecommendation"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 ReleaseRecommendation"
+      }
+    },
+    "/v1/objects/RightsGrant": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 RightsGrant"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 RightsGrant"
+      }
+    },
+    "/v1/objects/RiskFinding": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 RiskFinding"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 RiskFinding"
+      }
+    },
+    "/v1/objects/SKU": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 SKU"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 SKU"
+      }
+    },
+    "/v1/objects/SignatureEntitlement": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 SignatureEntitlement"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 SignatureEntitlement"
+      }
+    },
+    "/v1/objects/SignatureLot": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 SignatureLot"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 SignatureLot"
+      }
+    },
+    "/v1/objects/SignatureMovement": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 SignatureMovement"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 SignatureMovement"
+      }
+    },
+    "/v1/objects/TVSeries": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 TVSeries"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 TVSeries"
+      }
+    },
+    "/v1/objects/Talent": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "查询 Talent"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "创建 Talent"
+      }
+    },
+    "/v1/projections/bossActionInbox": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "读取投影 bossActionInbox"
+      }
+    },
+    "/v1/projections/contractRiskList": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "读取投影 contractRiskList"
+      }
+    },
+    "/v1/projections/marketRecommendation": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "读取投影 marketRecommendation"
+      }
+    },
+    "/v1/projections/paymentCalendar": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "读取投影 paymentCalendar"
+      }
+    },
+    "/v1/projections/signatureOverview": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "读取投影 signatureOverview"
+      }
+    }
+  }
+}

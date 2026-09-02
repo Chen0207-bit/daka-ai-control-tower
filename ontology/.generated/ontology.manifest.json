@@ -1,0 +1,3313 @@
+{
+  "actions": {
+    "allocateSignatures": {
+      "actorRoles": [
+        "ipOperations"
+      ],
+      "description": "从可用桶分配签名到发行项目；服务端阻断超额",
+      "effects": [
+        "appendAllocatedMovement",
+        "appendAuditEvent",
+        "recalculateSignatureBalance"
+      ],
+      "handler": "signature.allocate",
+      "idempotent": true,
+      "inputs": {
+        "quantity": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "integer"
+        },
+        "reason": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "text"
+        },
+        "releaseProjectId": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        }
+      },
+      "preconditions": [
+        {
+          "op": "gt",
+          "path": "input.quantity",
+          "value": 0
+        },
+        {
+          "op": "gte",
+          "path": "target.availableQuantity",
+          "valuePath": "input.quantity"
+        }
+      ],
+      "target": "SignatureLot"
+    },
+    "confirmFact": {
+      "actorRoles": [
+        "dataSteward",
+        "financeReviewer",
+        "legalReviewer"
+      ],
+      "description": "人工确认候选事实为 verified",
+      "effects": [
+        "appendAuditEvent",
+        "materializeCanonicalValue",
+        "setFactVerified"
+      ],
+      "handler": "fact.confirm",
+      "idempotent": true,
+      "inputs": {
+        "factId": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "reviewComment": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "text"
+        }
+      },
+      "preconditions": [
+        {
+          "op": "eq",
+          "path": "target.status",
+          "value": "proposed"
+        },
+        {
+          "op": "exists",
+          "path": "target.evidenceAnchorId"
+        }
+      ],
+      "target": "FactAssertion"
+    },
+    "extractContractCandidates": {
+      "actorRoles": [
+        "systemAgent"
+      ],
+      "description": "从合同文档抽取候选事实；只能产生 proposed",
+      "effects": [
+        "appendAuditEvent",
+        "attachEvidenceAnchors",
+        "createProposedFactAssertions"
+      ],
+      "handler": "extraction.contractCandidates",
+      "idempotent": true,
+      "inputs": {
+        "contractId": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "extractorVersion": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        }
+      },
+      "preconditions": [
+        {
+          "op": "exists",
+          "path": "target.documentId"
+        }
+      ],
+      "target": "Contract"
+    },
+    "receiveSignatureLot": {
+      "actorRoles": [
+        "ipOperations"
+      ],
+      "description": "签名批次入库",
+      "effects": [
+        "appendAuditEvent",
+        "appendReceivedMovement",
+        "createSignatureLot",
+        "recalculateSignatureBalance"
+      ],
+      "handler": "signature.receiveLot",
+      "idempotent": true,
+      "inputs": {
+        "evidenceAnchorId": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "lotNumber": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "quantity": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "integer"
+        },
+        "receivedAt": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        }
+      },
+      "preconditions": [
+        {
+          "op": "gt",
+          "path": "input.quantity",
+          "value": 0
+        }
+      ],
+      "target": "SignatureEntitlement"
+    },
+    "recordPayment": {
+      "actorRoles": [
+        "financeOperator"
+      ],
+      "description": "登记一笔实付并重算计划状态",
+      "effects": [
+        "appendAuditEvent",
+        "createPaymentEvent",
+        "recalculateScheduleStatus"
+      ],
+      "handler": "payment.record",
+      "idempotent": true,
+      "inputs": {
+        "amount": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "currency": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "paidAt": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "transactionReference": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        }
+      },
+      "preconditions": [
+        {
+          "op": "gt",
+          "path": "input.amount",
+          "value": 0
+        },
+        {
+          "op": "eq",
+          "path": "input.currency",
+          "valuePath": "target.currency"
+        }
+      ],
+      "target": "PaymentSchedule"
+    },
+    "rejectFact": {
+      "actorRoles": [
+        "dataSteward",
+        "financeReviewer",
+        "legalReviewer"
+      ],
+      "description": "驳回候选事实",
+      "effects": [
+        "appendAuditEvent",
+        "setFactRejected"
+      ],
+      "handler": "fact.reject",
+      "idempotent": true,
+      "inputs": {
+        "factId": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "rejectionReason": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "text"
+        }
+      },
+      "preconditions": [
+        {
+          "op": "eq",
+          "path": "target.status",
+          "value": "proposed"
+        }
+      ],
+      "target": "FactAssertion"
+    },
+    "resolveContractRisk": {
+      "actorRoles": [
+        "legalReviewer"
+      ],
+      "description": "法务关闭合同风险",
+      "effects": [
+        "appendAuditEvent",
+        "setRiskResolved"
+      ],
+      "handler": "risk.resolve",
+      "idempotent": true,
+      "inputs": {
+        "evidenceAnchorId": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "resolution": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "text"
+        }
+      },
+      "preconditions": [
+        {
+          "op": "eq",
+          "path": "target.status",
+          "value": "open"
+        }
+      ],
+      "target": "RiskFinding"
+    },
+    "reviewReleaseRecommendation": {
+      "actorRoles": [
+        "executiveViewer",
+        "ipOperations"
+      ],
+      "description": "人工评审发行建议；不得自动改印量或价格",
+      "effects": [
+        "appendAuditEvent",
+        "setRecommendationStatus"
+      ],
+      "handler": "market.reviewRecommendation",
+      "idempotent": true,
+      "inputs": {
+        "decision": {
+          "immutable": false,
+          "ref": "recommendationStatus",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        },
+        "reviewComment": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "text"
+        }
+      },
+      "preconditions": [
+        {
+          "op": "in",
+          "path": "target.status",
+          "value": [
+            "suggested",
+            "in_review"
+          ]
+        },
+        {
+          "op": "in",
+          "path": "input.decision",
+          "value": [
+            "approved",
+            "rejected"
+          ]
+        }
+      ],
+      "target": "ReleaseRecommendation"
+    },
+    "supersedeFact": {
+      "actorRoles": [
+        "dataSteward"
+      ],
+      "description": "以新事实替代已确认事实（双时态）",
+      "effects": [
+        "appendAuditEvent",
+        "createVerifiedReplacement",
+        "markOldSuperseded"
+      ],
+      "handler": "fact.supersede",
+      "idempotent": true,
+      "inputs": {
+        "oldFactId": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "reason": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "text"
+        },
+        "replacementFact": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "json"
+        }
+      },
+      "preconditions": [
+        {
+          "op": "eq",
+          "path": "target.status",
+          "value": "verified"
+        }
+      ],
+      "target": "FactAssertion"
+    },
+    "uploadContract": {
+      "actorRoles": [
+        "legalOperator"
+      ],
+      "description": "上传合同原文并创建合同草稿",
+      "effects": [
+        "appendAuditEvent",
+        "createContractDraft",
+        "createDocumentVersion"
+      ],
+      "handler": "contract.upload",
+      "idempotent": true,
+      "inputs": {
+        "documentUri": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "uri"
+        },
+        "sha256": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "title": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        }
+      },
+      "preconditions": [],
+      "target": "Contract"
+    }
+  },
+  "connectors": {
+    "yamlContractSeed": {
+      "checkpoint": "batchId",
+      "description": "YAML Data Pack 模拟合同/权益/义务批次",
+      "kind": "yaml",
+      "mapping": {
+        "Contract": {
+          "idField": "contractNumber"
+        },
+        "Obligation": {
+          "idField": "obligationType"
+        },
+        "RightsGrant": {
+          "idField": "rightType"
+        }
+      }
+    },
+    "yamlMarketBatch": {
+      "checkpoint": "batchId",
+      "description": "YAML Data Pack 模拟二级市场观察批次",
+      "kind": "yaml",
+      "mapping": {
+        "MarketObservation": {
+          "idField": "id"
+        }
+      }
+    },
+    "yamlPaymentBatch": {
+      "checkpoint": "batchId",
+      "description": "YAML Data Pack 模拟付款计划与实付批次",
+      "kind": "yaml",
+      "mapping": {
+        "Payment": {
+          "idField": "transactionReference"
+        },
+        "PaymentSchedule": {
+          "idField": "id"
+        }
+      }
+    },
+    "yamlSignatureBatch": {
+      "checkpoint": "batchId",
+      "description": "YAML Data Pack 模拟签名额度/批次/流转批次",
+      "kind": "yaml",
+      "mapping": {
+        "SignatureEntitlement": {
+          "idField": "id"
+        },
+        "SignatureLot": {
+          "idField": "lotNumber"
+        },
+        "SignatureMovement": {
+          "idField": "id"
+        }
+      }
+    }
+  },
+  "fingerprint": "5bd74d5b8f497bb3f8b6dace0bf9e3387774c90655a3e2937e4c75aa3b93de00",
+  "interfaces": {
+    "IPAsset": {
+      "description": "可被授权和商业化的长期 IP 资产接口",
+      "properties": {
+        "alternateNames": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "list<string>"
+        },
+        "canonicalName": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "lifecycleStatus": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "sourceSystem": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        }
+      }
+    }
+  },
+  "linkTypes": {
+    "affiliationToIp": {
+      "cardinality": "many_to_one",
+      "from": "Affiliation",
+      "status": "draft",
+      "to": "IPAsset"
+    },
+    "contractCreatesObligations": {
+      "cardinality": "one_to_many",
+      "from": "Contract",
+      "status": "draft",
+      "to": "Obligation"
+    },
+    "contractGrantsRights": {
+      "cardinality": "one_to_many",
+      "from": "Contract",
+      "status": "draft",
+      "to": "RightsGrant"
+    },
+    "contractGrantsSignatureEntitlement": {
+      "cardinality": "one_to_many",
+      "from": "Contract",
+      "status": "draft",
+      "to": "SignatureEntitlement"
+    },
+    "contractHasPaymentSchedule": {
+      "cardinality": "one_to_many",
+      "from": "Contract",
+      "status": "draft",
+      "to": "PaymentSchedule"
+    },
+    "contractParties": {
+      "cardinality": "many_to_many",
+      "from": "Contract",
+      "status": "draft",
+      "to": "Party"
+    },
+    "marketObservationTargetsIp": {
+      "cardinality": "many_to_one",
+      "from": "MarketObservation",
+      "status": "draft",
+      "to": "IPAsset"
+    },
+    "marketObservationTargetsSku": {
+      "cardinality": "many_to_one",
+      "from": "MarketObservation",
+      "status": "draft",
+      "to": "SKU"
+    },
+    "marketObservationTargetsTalent": {
+      "cardinality": "many_to_one",
+      "from": "MarketObservation",
+      "status": "draft",
+      "to": "Talent"
+    },
+    "paymentSettlesSchedule": {
+      "cardinality": "many_to_many",
+      "from": "Payment",
+      "status": "draft",
+      "to": "PaymentSchedule"
+    },
+    "recommendationBasedOnObservation": {
+      "cardinality": "many_to_many",
+      "from": "ReleaseRecommendation",
+      "status": "draft",
+      "to": "MarketObservation"
+    },
+    "recommendationForReleaseProject": {
+      "cardinality": "many_to_one",
+      "from": "ReleaseRecommendation",
+      "status": "draft",
+      "to": "ReleaseProject"
+    },
+    "releaseProjectContainsSku": {
+      "cardinality": "one_to_many",
+      "from": "ReleaseProject",
+      "status": "draft",
+      "to": "SKU"
+    },
+    "releaseProjectHasMilestone": {
+      "cardinality": "one_to_many",
+      "from": "ReleaseProject",
+      "status": "draft",
+      "to": "MilestoneEvidence"
+    },
+    "releaseProjectReliesOnRights": {
+      "cardinality": "many_to_many",
+      "from": "ReleaseProject",
+      "status": "draft",
+      "to": "RightsGrant"
+    },
+    "releaseProjectUsesIp": {
+      "cardinality": "many_to_many",
+      "from": "ReleaseProject",
+      "status": "draft",
+      "to": "IPAsset"
+    },
+    "rightsCoverIp": {
+      "cardinality": "many_to_many",
+      "from": "RightsGrant",
+      "status": "draft",
+      "to": "IPAsset"
+    },
+    "rightsCoverTalent": {
+      "cardinality": "many_to_many",
+      "from": "RightsGrant",
+      "status": "draft",
+      "to": "Talent"
+    },
+    "riskFindingTargetsContract": {
+      "cardinality": "many_to_one",
+      "from": "RiskFinding",
+      "status": "draft",
+      "to": "Contract"
+    },
+    "signatureLotFulfillsEntitlement": {
+      "cardinality": "many_to_one",
+      "from": "SignatureLot",
+      "status": "draft",
+      "to": "SignatureEntitlement"
+    },
+    "signatureMovementAffectsLot": {
+      "cardinality": "many_to_one",
+      "from": "SignatureMovement",
+      "status": "draft",
+      "to": "SignatureLot"
+    },
+    "talentAffiliation": {
+      "cardinality": "many_to_one",
+      "from": "Affiliation",
+      "status": "draft",
+      "to": "Talent"
+    }
+  },
+  "meta": {
+    "description": "DAKA IP 商业化生命周期的业务本体（由 daka.v0.1.yaml 0.1.0-draft 迁移；讨论注记见 ontology/spec/v1.md 第 10 节）",
+    "dsl": "1",
+    "name": "daka-business-ontology",
+    "version": "1.0.0"
+  },
+  "objectTypes": {
+    "Affiliation": {
+      "derived": {},
+      "description": "Talent 与 IP/Party 之间具有时间范围的归属或参与关系",
+      "fields": {
+        "affiliationType": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "validFrom": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        },
+        "validTo": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "affiliationType": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "validFrom": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        },
+        "validTo": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        }
+      }
+    },
+    "Contract": {
+      "derived": {},
+      "description": "产生授权、义务和付款计划的法律协议",
+      "fields": {
+        "contractNumber": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        },
+        "documentId": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "effectiveFrom": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        },
+        "effectiveTo": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        },
+        "governingLaw": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "signedAt": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        },
+        "status": {
+          "immutable": false,
+          "origin": "own",
+          "ref": "contractStatus",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        },
+        "title": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "contractNumber": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        },
+        "documentId": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "effectiveFrom": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        },
+        "effectiveTo": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        },
+        "governingLaw": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "signedAt": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        },
+        "status": {
+          "immutable": false,
+          "ref": "contractStatus",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        },
+        "title": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        }
+      }
+    },
+    "Document": {
+      "derived": {},
+      "description": "原始合同、表格、图片、邮件或审批材料的不可变版本",
+      "fields": {
+        "capturedAt": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "mediaType": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "sha256": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "uri": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "confidential",
+          "type": "uri"
+        },
+        "version": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "capturedAt": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "mediaType": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "sha256": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "uri": {
+          "immutable": false,
+          "required": true,
+          "security": "confidential",
+          "type": "uri"
+        },
+        "version": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        }
+      }
+    },
+    "EvidenceAnchor": {
+      "derived": {},
+      "description": "事实指向原始文档页码、段落、表格单元格或图片区域的锚点",
+      "fields": {
+        "documentId": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "excerptHash": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "locator": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "json"
+        },
+        "locatorType": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "documentId": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "excerptHash": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "locator": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "json"
+        },
+        "locatorType": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        }
+      }
+    },
+    "FactAssertion": {
+      "derived": {},
+      "description": "对业务事实的带来源断言，可被确认、驳回或替代",
+      "fields": {
+        "assertedBy": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "confidence": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "evidenceAnchorId": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "objectValue": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "json"
+        },
+        "predicate": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "recordedAt": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "status": {
+          "immutable": false,
+          "origin": "own",
+          "ref": "factStatus",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        },
+        "subjectId": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "supersedesFactId": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "validFrom": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "validTo": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "datetime"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "assertedBy": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "confidence": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "evidenceAnchorId": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "objectValue": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "json"
+        },
+        "predicate": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "recordedAt": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "status": {
+          "immutable": false,
+          "ref": "factStatus",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        },
+        "subjectId": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "supersedesFactId": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "validFrom": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "validTo": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "datetime"
+        }
+      }
+    },
+    "FootballClub": {
+      "derived": {},
+      "description": "足球俱乐部 IP",
+      "fields": {
+        "alternateNames": {
+          "immutable": false,
+          "origin": "interface",
+          "required": false,
+          "security": "internal",
+          "type": "list<string>"
+        },
+        "canonicalName": {
+          "immutable": false,
+          "origin": "interface",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "countryOrRegion": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "interface",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "league": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        },
+        "lifecycleStatus": {
+          "immutable": false,
+          "origin": "interface",
+          "required": false,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "sourceSystem": {
+          "immutable": false,
+          "origin": "interface",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        }
+      },
+      "implements": [
+        "IPAsset"
+      ],
+      "properties": {
+        "countryOrRegion": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        },
+        "league": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        }
+      }
+    },
+    "MarketObservation": {
+      "derived": {},
+      "description": "二级市场（如卡淘）成交与流动性观察，按 SKU/人物/IP 与时间窗口聚合；不会自动修改主档",
+      "fields": {
+        "currency": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "notes": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "text"
+        },
+        "observedAt": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "premiumRate": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "salePrice": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "source": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "spread": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "turnoverRate": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "uniqueBuyers": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "integer"
+        },
+        "volume": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "integer"
+        },
+        "windowDays": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "integer"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "currency": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "notes": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "text"
+        },
+        "observedAt": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "premiumRate": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "salePrice": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "source": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "spread": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "turnoverRate": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "uniqueBuyers": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "integer"
+        },
+        "volume": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "integer"
+        },
+        "windowDays": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "integer"
+        }
+      }
+    },
+    "MilestoneEvidence": {
+      "derived": {},
+      "description": "设计、审批、打样、生产等里程碑的完成证据",
+      "fields": {
+        "evidenceAnchorId": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "milestoneType": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "occurredAt": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "status": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "evidenceAnchorId": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "milestoneType": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "occurredAt": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "status": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        }
+      }
+    },
+    "Obligation": {
+      "derived": {},
+      "description": "合同产生的非付款义务、限制或审批要求",
+      "fields": {
+        "completionStatus": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "description": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "text"
+        },
+        "dueAt": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "obligationType": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "completionStatus": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "description": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "text"
+        },
+        "dueAt": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "obligationType": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        }
+      }
+    },
+    "Party": {
+      "derived": {},
+      "description": "公司、工作室、经纪机构、工厂、销售渠道或其他法律主体",
+      "fields": {
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "legalName": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "partyType": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "registrationIdentifier": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "highly_confidential",
+          "type": "string"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "legalName": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "partyType": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "registrationIdentifier": {
+          "immutable": false,
+          "required": false,
+          "security": "highly_confidential",
+          "type": "string"
+        }
+      }
+    },
+    "Payment": {
+      "derived": {},
+      "description": "实际发生的付款事件",
+      "fields": {
+        "amount": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "currency": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "paidAt": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "transactionReference": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "confidential",
+          "type": "string"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "amount": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "currency": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "paidAt": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "transactionReference": {
+          "immutable": false,
+          "required": false,
+          "security": "confidential",
+          "type": "string"
+        }
+      }
+    },
+    "PaymentSchedule": {
+      "derived": {
+        "settledAmount": {
+          "description": "已分摊实付合计（由 Payment 推导）",
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "unsettledAmount": {
+          "description": "未结清金额 = amount - settledAmount",
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        }
+      },
+      "description": "合同约定的应付节点",
+      "fields": {
+        "amount": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "currency": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "dueAt": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "settledAmount": {
+          "description": "已分摊实付合计（由 Payment 推导）",
+          "immutable": false,
+          "origin": "derived",
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "status": {
+          "immutable": false,
+          "origin": "own",
+          "ref": "paymentStatus",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        },
+        "triggerCondition": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "text"
+        },
+        "unsettledAmount": {
+          "description": "未结清金额 = amount - settledAmount",
+          "immutable": false,
+          "origin": "derived",
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "amount": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "currency": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "dueAt": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "status": {
+          "immutable": false,
+          "ref": "paymentStatus",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        },
+        "triggerCondition": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "text"
+        }
+      }
+    },
+    "ReleaseProject": {
+      "derived": {
+        "activeRightsCoverage": {
+          "description": "当前覆盖项目范围的有效 RightsGrant 集合（rule/投影推导）",
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "list<uuid>"
+        }
+      },
+      "description": "围绕一个或多个 IP 权益开展的一次商业化发布项目",
+      "fields": {
+        "activeRightsCoverage": {
+          "description": "当前覆盖项目范围的有效 RightsGrant 集合（rule/投影推导）",
+          "immutable": false,
+          "origin": "derived",
+          "required": false,
+          "security": "internal",
+          "type": "list<uuid>"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "ownerId": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "plannedLaunchAt": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        },
+        "projectName": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "stage": {
+          "immutable": false,
+          "origin": "own",
+          "ref": "lifecycleStage",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "ownerId": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "plannedLaunchAt": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        },
+        "projectName": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "stage": {
+          "immutable": false,
+          "ref": "lifecycleStage",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        }
+      }
+    },
+    "ReleaseRecommendation": {
+      "derived": {},
+      "description": "由市场观察生成的发行建议；只能进入人工评审，不得自动改印量、限编或价格",
+      "fields": {
+        "createdAt": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "createdBy": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "metricSnapshot": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "json"
+        },
+        "rationale": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "text"
+        },
+        "recommendationType": {
+          "immutable": false,
+          "origin": "own",
+          "ref": "recommendationType",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        },
+        "reviewComment": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "text"
+        },
+        "reviewedAt": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "status": {
+          "immutable": false,
+          "origin": "own",
+          "ref": "recommendationStatus",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "createdAt": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "createdBy": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "metricSnapshot": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "json"
+        },
+        "rationale": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "text"
+        },
+        "recommendationType": {
+          "immutable": false,
+          "ref": "recommendationType",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        },
+        "reviewComment": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "text"
+        },
+        "reviewedAt": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "status": {
+          "immutable": false,
+          "ref": "recommendationStatus",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        }
+      }
+    },
+    "RightsGrant": {
+      "derived": {},
+      "description": "基于合同产生、带约束条件的权利授予；不是 IP 自身固有属性",
+      "fields": {
+        "approvalRequired": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "boolean"
+        },
+        "channel": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "list<string>"
+        },
+        "exclusivity": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "productCategory": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "list<string>"
+        },
+        "rightType": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "territory": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "list<string>"
+        },
+        "validFrom": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "date"
+        },
+        "validTo": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "date"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "approvalRequired": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "boolean"
+        },
+        "channel": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "list<string>"
+        },
+        "exclusivity": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "productCategory": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "list<string>"
+        },
+        "rightType": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "territory": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "list<string>"
+        },
+        "validFrom": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "date"
+        },
+        "validTo": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "date"
+        }
+      }
+    },
+    "RiskFinding": {
+      "derived": {},
+      "description": "规则或人工识别的可解决风险发现",
+      "fields": {
+        "evidenceAnchorIds": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "list<uuid>"
+        },
+        "explanation": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "text"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "riskType": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "severity": {
+          "immutable": false,
+          "origin": "own",
+          "ref": "riskSeverity",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        },
+        "status": {
+          "immutable": false,
+          "origin": "own",
+          "ref": "riskStatus",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "evidenceAnchorIds": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "list<uuid>"
+        },
+        "explanation": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "text"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "riskType": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "severity": {
+          "immutable": false,
+          "ref": "riskSeverity",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        },
+        "status": {
+          "immutable": false,
+          "ref": "riskStatus",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        }
+      }
+    },
+    "SKU": {
+      "derived": {},
+      "description": "可生产、入库和销售的商品规格",
+      "fields": {
+        "category": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "productName": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "skuCode": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "category": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "productName": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "skuCode": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        }
+      }
+    },
+    "SignatureEntitlement": {
+      "derived": {},
+      "description": "合同授予的签名额度及约束",
+      "fields": {
+        "constraints": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "text"
+        },
+        "grantedQuantity": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "integer"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "unit": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "validFrom": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        },
+        "validTo": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "constraints": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "text"
+        },
+        "grantedQuantity": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "integer"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "unit": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "validFrom": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        },
+        "validTo": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "date"
+        }
+      }
+    },
+    "SignatureLot": {
+      "derived": {
+        "allocatedQuantity": {
+          "description": "已分配未消耗",
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "integer"
+        },
+        "availableQuantity": {
+          "description": "可用桶余额（Movement 守恒推导）",
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "integer"
+        },
+        "consumedQuantity": {
+          "description": "已消耗",
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "integer"
+        }
+      },
+      "description": "实际接收并可追踪的一批签名物料",
+      "fields": {
+        "allocatedQuantity": {
+          "description": "已分配未消耗",
+          "immutable": false,
+          "origin": "derived",
+          "required": false,
+          "security": "internal",
+          "type": "integer"
+        },
+        "availableQuantity": {
+          "description": "可用桶余额（Movement 守恒推导）",
+          "immutable": false,
+          "origin": "derived",
+          "required": false,
+          "security": "internal",
+          "type": "integer"
+        },
+        "consumedQuantity": {
+          "description": "已消耗",
+          "immutable": false,
+          "origin": "derived",
+          "required": false,
+          "security": "internal",
+          "type": "integer"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "lotNumber": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "qualityStatus": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "receivedAt": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "receivedQuantity": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "integer"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "lotNumber": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "qualityStatus": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "receivedAt": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "receivedQuantity": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "integer"
+        }
+      }
+    },
+    "SignatureMovement": {
+      "derived": {},
+      "description": "签名额度或实物库存的不可变流转事件",
+      "fields": {
+        "actorId": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "movementType": {
+          "immutable": false,
+          "origin": "own",
+          "ref": "signatureMovementType",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        },
+        "occurredAt": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "quantity": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "integer"
+        },
+        "reason": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "text"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "actorId": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "movementType": {
+          "immutable": false,
+          "ref": "signatureMovementType",
+          "required": true,
+          "security": "internal",
+          "type": "enum"
+        },
+        "occurredAt": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "datetime"
+        },
+        "quantity": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "integer"
+        },
+        "reason": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "text"
+        }
+      }
+    },
+    "TVSeries": {
+      "derived": {},
+      "description": "影视剧或剧集 IP",
+      "fields": {
+        "alternateNames": {
+          "immutable": false,
+          "origin": "interface",
+          "required": false,
+          "security": "internal",
+          "type": "list<string>"
+        },
+        "canonicalName": {
+          "immutable": false,
+          "origin": "interface",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "interface",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "lifecycleStatus": {
+          "immutable": false,
+          "origin": "interface",
+          "required": false,
+          "security": "internal",
+          "status": "TBD",
+          "type": "string"
+        },
+        "productionCompany": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        },
+        "releaseYear": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "integer"
+        },
+        "sourceSystem": {
+          "immutable": false,
+          "origin": "interface",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        }
+      },
+      "implements": [
+        "IPAsset"
+      ],
+      "properties": {
+        "productionCompany": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        },
+        "releaseYear": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "integer"
+        }
+      }
+    },
+    "Talent": {
+      "derived": {},
+      "description": "球员、演员、创作者或其他自然人主体",
+      "fields": {
+        "alternateNames": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "list<string>"
+        },
+        "canonicalName": {
+          "immutable": false,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "origin": "own",
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "identityIdentifier": {
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "highly_confidential",
+          "type": "string"
+        }
+      },
+      "implements": [],
+      "properties": {
+        "alternateNames": {
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "list<string>"
+        },
+        "canonicalName": {
+          "immutable": false,
+          "required": true,
+          "security": "internal",
+          "type": "string"
+        },
+        "id": {
+          "immutable": true,
+          "required": true,
+          "security": "internal",
+          "type": "uuid"
+        },
+        "identityIdentifier": {
+          "immutable": false,
+          "required": false,
+          "security": "highly_confidential",
+          "type": "string"
+        }
+      }
+    }
+  },
+  "policies": {
+    "dataStewardGovernance": {
+      "actions": [
+        "confirmFact",
+        "read",
+        "rejectFact",
+        "supersedeFact"
+      ],
+      "description": "数据管家治理全部事实",
+      "effect": "allow",
+      "fields": [
+        "*"
+      ],
+      "resources": [
+        "*"
+      ],
+      "roles": [
+        "dataSteward"
+      ]
+    },
+    "executiveAggregatedRead": {
+      "actions": [
+        "read"
+      ],
+      "description": "管理层只读（字段遮罩叠加生效）",
+      "effect": "allow",
+      "fields": [
+        "*"
+      ],
+      "resources": [
+        "*"
+      ],
+      "roles": [
+        "executiveViewer"
+      ]
+    },
+    "financePaymentWrite": {
+      "actions": [
+        "read",
+        "recordPayment",
+        "write"
+      ],
+      "description": "财务可读写付款对象",
+      "effect": "allow",
+      "fields": [
+        "*"
+      ],
+      "resources": [
+        "Payment",
+        "PaymentSchedule"
+      ],
+      "roles": [
+        "financeOperator"
+      ]
+    },
+    "financeReviewGovernance": {
+      "actions": [
+        "confirmFact",
+        "read",
+        "rejectFact"
+      ],
+      "description": "财务复核确认财务事实",
+      "effect": "allow",
+      "fields": [
+        "*"
+      ],
+      "resources": [
+        "FactAssertion",
+        "Payment",
+        "PaymentSchedule"
+      ],
+      "roles": [
+        "financeReviewer"
+      ]
+    },
+    "ipOperationsWrite": {
+      "actions": [
+        "allocateSignatures",
+        "read",
+        "receiveSignatureLot",
+        "reviewReleaseRecommendation",
+        "write"
+      ],
+      "description": "IP 运营管理签名流转与发行项目",
+      "effect": "allow",
+      "fields": [
+        "*"
+      ],
+      "resources": [
+        "MarketObservation",
+        "MilestoneEvidence",
+        "ReleaseProject",
+        "ReleaseRecommendation",
+        "SKU",
+        "SignatureEntitlement",
+        "SignatureLot",
+        "SignatureMovement"
+      ],
+      "roles": [
+        "ipOperations"
+      ]
+    },
+    "legalContractWrite": {
+      "actions": [
+        "read",
+        "uploadContract",
+        "write"
+      ],
+      "description": "法务操作可录入合同与证据",
+      "effect": "allow",
+      "fields": [
+        "*"
+      ],
+      "resources": [
+        "Contract",
+        "Document",
+        "EvidenceAnchor",
+        "Obligation",
+        "RightsGrant"
+      ],
+      "roles": [
+        "legalOperator"
+      ]
+    },
+    "legalReviewGovernance": {
+      "actions": [
+        "confirmFact",
+        "read",
+        "rejectFact",
+        "resolveContractRisk"
+      ],
+      "description": "法务复核确认法律事实并关闭风险",
+      "effect": "allow",
+      "fields": [
+        "*"
+      ],
+      "resources": [
+        "Contract",
+        "FactAssertion",
+        "RightsGrant",
+        "RiskFinding"
+      ],
+      "roles": [
+        "legalReviewer"
+      ]
+    },
+    "sensitiveFieldMaskForExecutive": {
+      "actions": [
+        "read"
+      ],
+      "description": "高度机密字段对管理层遮罩",
+      "effect": "deny",
+      "fields": [
+        "identityIdentifier",
+        "registrationIdentifier",
+        "transactionReference",
+        "uri"
+      ],
+      "resources": [
+        "Document",
+        "Party",
+        "Payment",
+        "Talent"
+      ],
+      "roles": [
+        "executiveViewer"
+      ]
+    },
+    "systemAgentDenyGovernance": {
+      "actions": [
+        "allocateSignatures",
+        "confirmFact",
+        "recordPayment",
+        "rejectFact",
+        "supersedeFact"
+      ],
+      "description": "显式拒绝系统代理执行任何治理/资金/库存动作（纵深防御）",
+      "effect": "deny",
+      "fields": [
+        "*"
+      ],
+      "resources": [
+        "FactAssertion"
+      ],
+      "roles": [
+        "systemAgent"
+      ]
+    },
+    "systemAgentProposeOnly": {
+      "actions": [
+        "extractContractCandidates",
+        "read"
+      ],
+      "description": "系统代理只能抽取候选事实",
+      "effect": "allow",
+      "fields": [
+        "*"
+      ],
+      "resources": [
+        "Contract",
+        "FactAssertion"
+      ],
+      "roles": [
+        "systemAgent"
+      ]
+    }
+  },
+  "projections": {
+    "bossActionInbox": {
+      "basedOn": [
+        "PaymentSchedule",
+        "ReleaseRecommendation",
+        "RiskFinding"
+      ],
+      "description": "老板行动项：高严重度风险、逾期付款、待评审发行建议",
+      "metrics": {}
+    },
+    "contractRiskList": {
+      "basedOn": [
+        "Contract",
+        "EvidenceAnchor",
+        "Obligation",
+        "RightsGrant",
+        "RiskFinding"
+      ],
+      "description": "合同风险清单：范围缺口、证据缺失、义务临期",
+      "metrics": {}
+    },
+    "marketRecommendation": {
+      "basedOn": [
+        "MarketObservation",
+        "ReleaseRecommendation",
+        "SKU",
+        "Talent"
+      ],
+      "description": "二级市场观察与发行建议（口径可见，建议须人工评审）",
+      "metrics": {}
+    },
+    "paymentCalendar": {
+      "basedOn": [
+        "Contract",
+        "Payment",
+        "PaymentSchedule"
+      ],
+      "description": "付款日历：应付、已付、待付、逾期",
+      "metrics": {
+        "overdueAmount": {
+          "description": "逾期金额",
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        },
+        "unsettledAmount": {
+          "description": "未结清金额",
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "decimal"
+        }
+      }
+    },
+    "signatureOverview": {
+      "basedOn": [
+        "ReleaseProject",
+        "SignatureEntitlement",
+        "SignatureLot",
+        "SignatureMovement"
+      ],
+      "description": "签名全景：合同额度与实物状态桶（在途/待质检/可用/已分配/已消耗/退回）",
+      "metrics": {
+        "allocatedQuantity": {
+          "description": "已分配数量",
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "integer"
+        },
+        "availableQuantity": {
+          "description": "可用数量",
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "integer"
+        }
+      }
+    }
+  },
+  "roleDefinitions": {
+    "dataSteward": {
+      "dataScope": "tenant",
+      "description": "数据管家；本体事实治理"
+    },
+    "executiveViewer": {
+      "dataScope": "aggregated_only",
+      "description": "老板/管理层；只看聚合视图与高影响例外"
+    },
+    "financeOperator": {
+      "dataScope": "workspace",
+      "description": "财务操作；付款登记"
+    },
+    "financeReviewer": {
+      "dataScope": "workspace",
+      "description": "财务复核；确认财务事实"
+    },
+    "ipOperations": {
+      "dataScope": "workspace",
+      "description": "IP/商品运营；签名流转与发行项目"
+    },
+    "legalOperator": {
+      "dataScope": "workspace",
+      "description": "法务操作；合同与权益录入"
+    },
+    "legalReviewer": {
+      "dataScope": "workspace",
+      "description": "法务复核；确认法律事实、关闭风险"
+    },
+    "systemAgent": {
+      "dataScope": "workspace",
+      "description": "系统/AI 代理；只能提交 proposed 候选事实"
+    }
+  },
+  "rules": {
+    "affiliationTimeConflict": {
+      "description": "声称的归属关系在权益有效期内不成立",
+      "result": "createRiskFindingForReview",
+      "scope": [
+        "Affiliation",
+        "RightsGrant"
+      ],
+      "severity": "medium",
+      "when": {
+        "args": [
+          {
+            "op": "exists",
+            "path": "affiliation.validFrom"
+          },
+          {
+            "op": "dateAfter",
+            "path": "affiliation.validFrom",
+            "valuePath": "rightsGrant.validTo"
+          }
+        ],
+        "op": "all"
+      }
+    },
+    "marketPremiumSpike": {
+      "description": "二级市场溢价率超过演示阈值时生成发行建议候选",
+      "result": "createReleaseRecommendationCandidate",
+      "scope": [
+        "MarketObservation"
+      ],
+      "severity": "medium",
+      "when": {
+        "args": [
+          {
+            "op": "gte",
+            "path": "observation.premiumRate",
+            "value": 0.5
+          },
+          {
+            "op": "gte",
+            "path": "observation.volume",
+            "value": 100
+          }
+        ],
+        "op": "all"
+      }
+    },
+    "paymentOverdue": {
+      "description": "付款计划已过到期日且未结清金额大于零",
+      "result": "createOrUpdateRiskFinding",
+      "scope": [
+        "PaymentSchedule"
+      ],
+      "severity": "high",
+      "when": {
+        "args": [
+          {
+            "op": "dateBefore",
+            "path": "schedule.dueAt",
+            "value": "now"
+          },
+          {
+            "op": "gt",
+            "path": "schedule.unsettledAmount",
+            "value": 0
+          }
+        ],
+        "op": "all"
+      }
+    },
+    "rightsScopeGap": {
+      "description": "发行项目的范围（地域/渠道/品类/期限）未被任何有效 RightsGrant 覆盖",
+      "result": "blockReleaseAndCreateRiskFinding",
+      "scope": [
+        "ReleaseProject"
+      ],
+      "severity": "critical",
+      "when": {
+        "op": "missing",
+        "path": "releaseProject.activeRightsCoverage"
+      }
+    },
+    "signatureBalanceNegative": {
+      "description": "推导的可用签名数量低于零",
+      "result": "blockMovementAndCreateRiskFinding",
+      "scope": [
+        "SignatureLot"
+      ],
+      "severity": "critical",
+      "when": {
+        "op": "lt",
+        "path": "signatureLot.availableQuantity",
+        "value": 0
+      }
+    },
+    "verifiedFactMissingEvidence": {
+      "description": "verified 事实缺少证据锚点",
+      "result": "rejectTransition",
+      "scope": [
+        "FactAssertion"
+      ],
+      "severity": "critical",
+      "when": {
+        "args": [
+          {
+            "op": "eq",
+            "path": "fact.status",
+            "value": "verified"
+          },
+          {
+            "op": "missing",
+            "path": "fact.evidenceAnchorId"
+          }
+        ],
+        "op": "all"
+      }
+    }
+  },
+  "valueSets": {
+    "contractStatus": {
+      "status": "draft",
+      "values": [
+        "active",
+        "draft",
+        "expired",
+        "terminated",
+        "under_review"
+      ]
+    },
+    "factStatus": {
+      "status": "proposed",
+      "values": [
+        "proposed",
+        "rejected",
+        "superseded",
+        "verified"
+      ]
+    },
+    "lifecycleStage": {
+      "status": "draft",
+      "values": [
+        "approval",
+        "contracting",
+        "designing",
+        "production",
+        "sampling",
+        "selling",
+        "settlement",
+        "sourcing",
+        "warehousing"
+      ]
+    },
+    "paymentStatus": {
+      "status": "draft",
+      "values": [
+        "disputed",
+        "due",
+        "overdue",
+        "paid",
+        "planned",
+        "waived"
+      ]
+    },
+    "recommendationStatus": {
+      "status": "draft",
+      "values": [
+        "approved",
+        "in_review",
+        "rejected",
+        "suggested"
+      ]
+    },
+    "recommendationType": {
+      "status": "draft",
+      "values": [
+        "delist",
+        "hold",
+        "price_adjust",
+        "reprint"
+      ]
+    },
+    "riskSeverity": {
+      "status": "draft",
+      "values": [
+        "critical",
+        "high",
+        "info",
+        "low",
+        "medium"
+      ]
+    },
+    "riskStatus": {
+      "status": "draft",
+      "values": [
+        "acknowledged",
+        "dismissed",
+        "open",
+        "resolved"
+      ]
+    },
+    "securityLevel": {
+      "status": "draft",
+      "values": [
+        "confidential",
+        "highly_confidential",
+        "internal"
+      ]
+    },
+    "signatureMovementType": {
+      "status": "draft",
+      "values": [
+        "adjusted",
+        "allocated",
+        "consumed",
+        "granted",
+        "inspected",
+        "received",
+        "returned"
+      ]
+    }
+  }
+}
