@@ -4,8 +4,11 @@ import {
   authorizeFact,
   authorizeLinkCreate,
   authorizeLinkRead,
+  evaluatePolicy,
   loadManifest,
   makeContext,
+  maskedFields,
+  maskRecord,
   type ActorContext,
 } from "../src/index";
 
@@ -75,5 +78,52 @@ describe("关系治理授权（Link）", () => {
     expect(authorizeLinkRead(manifest, role(["executiveViewer"])).allowed).toBe(true);
     expect(authorizeLinkRead(manifest, role(["dataSteward"])).allowed).toBe(true);
     expect(authorizeLinkRead(manifest, role(["legalOperator"]), "contractParties").allowed).toBe(true);
+  });
+});
+
+describe("字段级遮罩（maskRecord，compiled manifest 驱动）", () => {
+  const PARTY = {
+    id: "p1",
+    legalName: "演示相对方（演示推演）",
+    partyType: "company",
+    registrationIdentifier: "REG-SECRET-91310000",
+  };
+
+  it("executiveViewer：highly_confidential 字段被精确替换为 ***masked***，其余字段保留", () => {
+    const masked = maskRecord(manifest, role(["executiveViewer"]), "Party", PARTY);
+    expect(masked.registrationIdentifier).toBe("***masked***");
+    expect(masked.legalName).toBe(PARTY.legalName);
+    expect(masked.partyType).toBe(PARTY.partyType);
+  });
+
+  it("deny 优先：executiveViewer 虽有 fields:* 的通配 allow，显式 deny 字段仍遮罩", () => {
+    // executiveAggregatedRead(allow */*) 与 sensitiveFieldMaskForExecutive(deny) 同时命中 → deny 胜
+    expect(maskedFields(manifest, role(["executiveViewer"]), "Party").has("registrationIdentifier")).toBe(true);
+  });
+
+  it("字段级 deny 不阻断行级读：executiveViewer 行授权通过、敏感字段由遮罩收口", () => {
+    expect(evaluatePolicy(manifest, role(["executiveViewer"]), "Party", "read").allowed).toBe(true);
+    // 但按字段求值时 deny 依然生效（双层语义：行授权 + 字段遮罩）
+    expect(evaluatePolicy(manifest, role(["executiveViewer"]), "Party", "read", "registrationIdentifier").allowed).toBe(false);
+    expect(evaluatePolicy(manifest, role(["executiveViewer"]), "Party", "read", "legalName").allowed).toBe(true);
+  });
+
+  it("有权限角色（dataSteward / legalOperator）看到原值", () => {
+    for (const r of ["dataSteward", "legalOperator"]) {
+      const masked = maskRecord(manifest, role([r]), "Party", PARTY);
+      expect(masked.registrationIdentifier, r).toBe(PARTY.registrationIdentifier);
+    }
+  });
+
+  it("default deny：无字段级 allow 的角色（financeOperator）默认遮罩 highly_confidential", () => {
+    const masked = maskRecord(manifest, role(["financeOperator"]), "Party", PARTY);
+    expect(masked.registrationIdentifier).toBe("***masked***");
+  });
+
+  it("Talent.identityIdentifier 同样遮罩；无敏感字段类型零开销原样返回", () => {
+    const talent = { id: "t1", canonicalName: "演示人物", identityIdentifier: "ID-SECRET-110101" };
+    expect(maskRecord(manifest, role(["executiveViewer"]), "Talent", talent).identityIdentifier).toBe("***masked***");
+    const contract = { id: "c1", title: "x" };
+    expect(maskRecord(manifest, role(["executiveViewer"]), "Contract", contract)).toEqual(contract);
   });
 });

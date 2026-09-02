@@ -44,10 +44,10 @@ policies:
   legalContractWrite:
     effect: allow
     roles: [legalOperator]
-    resources: [Contract, RightsGrant, Obligation, Document, EvidenceAnchor]
+    resources: [Contract, RightsGrant, Obligation, Document, EvidenceAnchor, Party]
     actions: [read, write, uploadContract]
     fields: ["*"]
-    description: 法务操作可录入合同与证据
+    description: 法务操作可录入合同、相对方（Party）与证据
 
   legalReviewGovernance:
     effect: allow

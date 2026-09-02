@@ -34,6 +34,9 @@ export function evaluatePolicy(
       (action === "write" && p.actions.includes("write")) ||
       (p.actions.includes("write") && action !== "read");
     if (!actionHit) continue;
+    // 行级授权（field undefined）只由整资源 policy（fields:["*"]）决定；
+    // 字段级 policy（如 sensitiveFieldMaskForExecutive）不阻断行读取，只经 maskedFields/maskRecord 在响应边界遮罩。
+    if (field === undefined && !p.fields.includes("*")) continue;
     if (field !== undefined && !matches(p.fields, field)) continue;
     matched.push({ id, effect: p.effect });
   }

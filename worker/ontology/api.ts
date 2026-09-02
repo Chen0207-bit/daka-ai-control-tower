@@ -21,6 +21,7 @@ import {
   listLinks,
   listObjects,
   marketRecommendation,
+  maskRecord,
   materializeFindings,
   paymentCalendar,
   proposeFact,
@@ -171,7 +172,8 @@ export async function handleOntologyApi(request: Request, env: OntologyEnv): Pro
       const policy = evaluatePolicy(manifest, ctx, type, "read");
       if (!policy.allowed) return json({ error: { code: RUNTIME_ERRORS.POLICY_DENY, message: policy.reason } }, 403);
       const items = await withTx(pool, ctx, (c) => listObjects(c, ctx, type));
-      return json({ items });
+      // 字段级遮罩在响应边界统一生效（compiled manifest 驱动；deny 优先），与投影读路径一致
+      return json({ items: items.map((r) => ({ ...r, data: maskRecord(manifest, ctx, type, r.data) })) });
     }
 
     if (path === "/v1/objects" && request.method === "POST") {
@@ -188,7 +190,8 @@ export async function handleOntologyApi(request: Request, env: OntologyEnv): Pro
         const releaseId = await ensureRelease(c, manifest, ctx.actorId);
         return createObject(c, ctx, manifest, releaseId, type, data, typeof body.id === "string" ? body.id : undefined);
       });
-      return json(created, 201);
+      // 创建回显同样走遮罩：写权限不隐含敏感字段读权限
+      return json({ ...created, data: maskRecord(manifest, ctx, type, created.data) }, 201);
     }
 
     if (path === "/v1/links" && request.method === "GET") {

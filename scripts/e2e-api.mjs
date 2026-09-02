@@ -121,6 +121,27 @@ console.log(`E2E against ${BASE}`);
   ok("合法创建关系 201", okLink.status === 201, JSON.stringify(okLink.data));
 }
 
+// 2.6 字段级遮罩：真实 API 读路径（GET /v1/objects）对敏感字段值断言
+{
+  const partyId = id("000000000501");
+  const REG = `E2E-REG-${RUN}`;
+  const created = await call("/v1/objects", {
+    method: "POST", roles: ["legalOperator"], actor: "e2e-legal",
+    body: { type: "Party", id: partyId, data: { legalName: "E2E 相对方（演示推演）", partyType: "company", registrationIdentifier: REG } },
+  });
+  ok("创建含敏感字段的 Party", created.status === 201, JSON.stringify(created.data));
+  const asExec = await call(`/v1/objects?type=Party`, { roles: ["executiveViewer"], actor: "e2e-exec" });
+  const execRow = asExec.data?.items?.find((x) => x.id === partyId);
+  ok("executiveViewer 可读该行但 registrationIdentifier=***masked***", asExec.status === 200 && execRow?.data?.registrationIdentifier === "***masked***", JSON.stringify(execRow?.data));
+  ok("executiveViewer 仍见非敏感字段原值", execRow?.data?.legalName === "E2E 相对方（演示推演）");
+  const asLegal = await call(`/v1/objects?type=Party`, { roles: ["legalOperator"], actor: "e2e-legal" });
+  ok("legalOperator 见 registrationIdentifier 原值", asLegal.data?.items?.find((x) => x.id === partyId)?.data?.registrationIdentifier === REG);
+  const asSteward = await call(`/v1/objects?type=Party`, { roles: ["dataSteward"], actor: "e2e-steward" });
+  ok("dataSteward 见 registrationIdentifier 原值", asSteward.data?.items?.find((x) => x.id === partyId)?.data?.registrationIdentifier === REG);
+  const asFin = await call(`/v1/objects?type=Party`, { roles: ["financeOperator"], actor: "e2e-fin" });
+  ok("无读权限角色（financeOperator）整行 403（default deny）", asFin.status === 403, JSON.stringify(asFin.data));
+}
+
 // 3. 签名闭环：收货 → 分配 → 超额 422 → 桶余额
 {
   const e = await call("/v1/objects", {

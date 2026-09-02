@@ -472,7 +472,7 @@
       }
     }
   },
-  "fingerprint": "77ab08b96617f40ca604e39d3aa19b159a1ce675e3e1d4e32d2b1c6c811be9d2",
+  "fingerprint": "60b5e17949a939fc642e95355e64b1c34d82103fc057a0e70206f716751e027c",
   "interfaces": {
     "IPAsset": {
       "description": "可被授权和商业化的长期 IP 资产接口",
@@ -2930,7 +2930,7 @@
         "uploadContract",
         "write"
       ],
-      "description": "法务操作可录入合同与证据",
+      "description": "法务操作可录入合同、相对方（Party）与证据",
       "effect": "allow",
       "fields": [
         "*"
@@ -2940,6 +2940,7 @@
         "Document",
         "EvidenceAnchor",
         "Obligation",
+        "Party",
         "RightsGrant"
       ],
       "roles": [

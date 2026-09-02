@@ -10,8 +10,10 @@ import {
   executeAction,
   factTargetLoader,
   listFacts,
+  listObjects,
   loadManifest,
   makeContext,
+  maskRecord,
   paymentCalendar,
   proposeFact,
   RUNTIME_ERRORS,
@@ -297,10 +299,48 @@ describe.skipIf(!DB_URL)("runtime 集成（真实 PostgreSQL + RLS 角色）", (
     expect(r.status).toBe("skipped");
   });
 
-  it("执行管理层遮罩：executiveViewer 看 Payment 隐去 transactionReference", async () => {
-    const a = await paymentCalendar(pool, FINANCE, manifest);
-    const b = await paymentCalendar(pool, OUTSIDER, manifest);
-    // 双方均可见行（RLS 通过），但字段遮罩不同由 maskRecord 保证；此处验证投影可运行
-    expect(a.items.length).toBe(b.items.length);
+  it("字段级遮罩（普通对象读路径）：executiveViewer 见 ***masked***，授权角色见原值", async () => {
+    // 真实敏感字段记录（经 runtime 写入，模拟 API 读路径 listObjects → maskRecord 的组合）
+    await withTx(pool, STEWARD, (c) =>
+      createObject(c, STEWARD, manifest, releaseId, "Party", {
+        legalName: "集成测试相对方（演示推演）",
+        partyType: "company",
+        registrationIdentifier: "REG-SECRET-INTEG-1",
+      }, d("000000000401")),
+    );
+    const rows = await withTx(pool, OUTSIDER, (c) => listObjects(c, OUTSIDER, "Party"));
+    const row = rows.find((r) => r.id === d("000000000401"));
+    expect(row).toBeDefined();
+    // 与 worker GET /v1/objects 响应边界相同的遮罩调用
+    const execView = maskRecord(manifest, OUTSIDER, "Party", row!.data);
+    expect(execView.registrationIdentifier).toBe("***masked***");
+    expect(execView.legalName).toBe("集成测试相对方（演示推演）");
+    const stewardRows = await withTx(pool, STEWARD, (c) => listObjects(c, STEWARD, "Party"));
+    const stewardView = maskRecord(manifest, STEWARD, "Party", stewardRows.find((r) => r.id === d("000000000401"))!.data);
+    expect(stewardView.registrationIdentifier).toBe("REG-SECRET-INTEG-1");
+  });
+
+  it("字段级遮罩（投影读路径）：paymentCalendar 对 executiveViewer 遮罩敏感字段值", async () => {
+    // financeOperator 登记一笔带 transactionReference 的真实付款
+    await executeAction(pool, manifest, engineOpts(), FINANCE, "recordPayment", {
+      targetId: d("000000000102"),
+      input: { amount: "10", currency: "CNY", paidAt: "2026-09-01T00:00:00Z", transactionReference: "TXN-SECRET-PROJ-1" },
+      idempotencyKey: "pay-mask-1",
+    });
+    const fin = await paymentCalendar(pool, FINANCE, manifest);
+    const exec = await paymentCalendar(pool, OUTSIDER, manifest);
+    // 双方均可见同一 schedule 行（RLS 通过），断言字段值而非行数
+    const finItem = fin.items.find((i) => i.id === d("000000000102"));
+    const execItem = exec.items.find((i) => i.id === d("000000000102"));
+    expect(finItem).toBeDefined();
+    expect(execItem).toBeDefined();
+    // PaymentSchedule 无 highly_confidential 字段：双方都看到 amount 原值
+    expect((execItem as Record<string, unknown>).amount).toBe((finItem as Record<string, unknown>).amount);
+    // 敏感字段遮罩由 maskRecord 驱动：executiveViewer 在 Payment 上看不到 transactionReference
+    const paymentRows = await withTx(pool, FINANCE, (c) => listObjects(c, FINANCE, "Payment"));
+    const pay = paymentRows.find((r) => r.data.transactionReference === "TXN-SECRET-PROJ-1");
+    expect(pay).toBeDefined();
+    expect(maskRecord(manifest, OUTSIDER, "Payment", pay!.data).transactionReference).toBe("***masked***");
+    expect(maskRecord(manifest, FINANCE, "Payment", pay!.data).transactionReference).toBe("TXN-SECRET-PROJ-1");
   });
 });
