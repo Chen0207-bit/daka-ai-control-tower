@@ -16,7 +16,7 @@ export type { DataPack, PackPlan } from "./ingest/datapack";
 export { YamlCandidateProvider } from "./ingest/yaml-candidate-provider";
 export { assertSupported, loadManifest } from "./manifest";
 export type { RuntimeManifest } from "./manifest";
-export { authorizeFact, authorizeLinkCreate, authorizeLinkRead, evaluatePolicy, linkFromType, maskedFields, maskRecord } from "./policy";
+export { authorizeFact, authorizeLinkCreate, authorizeLinkRead, evaluatePolicy, FACT_RESOURCE, LINK_RESOURCE, linkFromType, maskedFields, maskRecord } from "./policy";
 export type { FactVerb, PolicyDecision } from "./policy";
 export { PROJECTIONS, bossActionInbox, contractRiskList, marketRecommendation, paymentCalendar, signatureOverview } from "./projections";
 export { createLink, createObject, ensureRelease, getObject, listLinks, listObjects, updateObject, writeAudit, writeOutbox } from "./repository";

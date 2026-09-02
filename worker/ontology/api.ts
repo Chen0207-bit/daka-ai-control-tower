@@ -4,6 +4,7 @@ import {
   authorizeFact,
   authorizeLinkCreate,
   authorizeLinkRead,
+  FACT_RESOURCE,
   bossActionInbox,
   buildDataPack,
   buildHandlers,
@@ -176,6 +177,10 @@ export async function handleOntologyApi(request: Request, env: OntologyEnv): Pro
     if (path === "/v1/objects" && request.method === "POST") {
       const body = await readJson(request);
       const type = String(body.type ?? "");
+      // FactAssertion 是治理资源（状态迁移经 /v1/facts），不得经普通对象路由创建
+      if (type === FACT_RESOURCE) {
+        throw new RuntimeError(RUNTIME_ERRORS.VALIDATION, "FactAssertion 是治理资源，请使用 /v1/facts 提交/治理事实");
+      }
       const data = (body.data ?? {}) as Record<string, unknown>;
       const policy = evaluatePolicy(manifest, ctx, type, "write");
       if (!policy.allowed) return json({ error: { code: RUNTIME_ERRORS.POLICY_DENY, message: policy.reason } }, 403);

@@ -69,6 +69,11 @@ console.log(`E2E against ${BASE}`);
   ok("systemAgent 确认事实被拒 403", sysVerify.status === 403, JSON.stringify(sysVerify.data));
   const execVerify = await call(`/v1/facts/${factId}/verify`, { method: "POST", roles: ["executiveViewer"], actor: "e2e-exec", body: {} });
   ok("executiveViewer 确认事实被拒 403", execVerify.status === 403, JSON.stringify(execVerify.data));
+  const objFact = await call("/v1/objects", {
+    method: "POST", roles: ["dataSteward"], actor: "e2e-steward",
+    body: { type: "FactAssertion", data: { subjectId: id("0000000000d1"), predicate: "e2e.objfact", objectValue: {}, status: "verified", evidenceAnchorId: "d0000000-0000-4000-8000-0000000000e2", recordedAt: "2026-09-03T00:00:00Z", assertedBy: "e2e" } },
+  });
+  ok("FactAssertion 禁经对象路由创建 400", objFact.status === 400, JSON.stringify(objFact.data));
   const v = await call(`/v1/facts/${factId}/verify`, { method: "POST", roles: ["legalReviewer"], actor: "e2e-legalreview", body: {} });
   ok("人工确认 fact → verified", v.status === 200 && v.data?.status === "verified", JSON.stringify(v.data));
   const list = await call("/v1/facts?status=verified", { roles: ["dataSteward"] });
