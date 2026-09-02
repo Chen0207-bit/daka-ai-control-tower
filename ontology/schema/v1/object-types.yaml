@@ -125,7 +125,7 @@ objectTypes:
       quantity: {type: integer, required: true}
       occurredAt: {type: datetime, required: true}
       reason: {type: text, required: false}
-      actorId: {type: uuid, required: true}
+      actorId: {type: string, required: true, description: 平台 actor 标识（非对象外键）}
 
   ReleaseProject:
     description: 围绕一个或多个 IP 权益开展的一次商业化发布项目
@@ -194,6 +194,8 @@ objectTypes:
     description: 规则或人工识别的可解决风险发现
     properties:
       id: {type: uuid, required: true, immutable: true}
+      ruleId: {type: string, required: false, description: 产生该风险的规则 ID（人工风险为空）}
+      subjectId: {type: uuid, required: false, description: 风险指向的对象}
       riskType: {type: string, required: true, status: TBD}
       severity: {type: enum, ref: riskSeverity, required: true}
       status: {type: enum, ref: riskStatus, required: true}

@@ -1,0 +1,7 @@
+facts:
+  # 候选事实：等待人工确认（合同权益闭环第一步）
+  - subjectType: Contract
+    subjectId: d0000000-0000-4000-8000-0000000000d1
+    predicate: rightsGrant.scope
+    objectValue: {territory: [中国大陆], channel: [线上电商, 线下零售], productCategory: [纸质收藏卡]}
+    evidenceAnchorId: d0000000-0000-4000-8000-0000000000e2

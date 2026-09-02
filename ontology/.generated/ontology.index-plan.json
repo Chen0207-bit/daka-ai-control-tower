@@ -206,6 +206,12 @@
       "reason": "enum_status"
     },
     {
+      "column": "subjectId",
+      "kind": "btree",
+      "objectType": "RiskFinding",
+      "reason": "foreign_reference"
+    },
+    {
       "column": "validFrom",
       "kind": "btree",
       "objectType": "SignatureEntitlement",
@@ -222,12 +228,6 @@
       "kind": "btree",
       "objectType": "SignatureLot",
       "reason": "temporal_query"
-    },
-    {
-      "column": "actorId",
-      "kind": "btree",
-      "objectType": "SignatureMovement",
-      "reason": "foreign_reference"
     },
     {
       "column": "movementType",

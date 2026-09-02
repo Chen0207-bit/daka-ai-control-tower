@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@daka/ontology-dsl": "workspace:*",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "yaml": "^2.8.0"
   },
   "devDependencies": {
     "@types/node": "22.19.19",

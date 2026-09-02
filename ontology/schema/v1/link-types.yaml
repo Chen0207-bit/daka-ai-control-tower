@@ -21,3 +21,4 @@ linkTypes:
   marketObservationTargetsIp: {from: MarketObservation, to: IPAsset, cardinality: many_to_one, status: draft}
   recommendationBasedOnObservation: {from: ReleaseRecommendation, to: MarketObservation, cardinality: many_to_many, status: draft}
   recommendationForReleaseProject: {from: ReleaseRecommendation, to: ReleaseProject, cardinality: many_to_one, status: draft}
+  signatureMovementForProject: {from: SignatureMovement, to: ReleaseProject, cardinality: many_to_one, status: draft}

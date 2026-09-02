@@ -171,8 +171,10 @@ export interface RiskFinding {
   evidenceAnchorIds?: string[];
   explanation: string;
   riskType: string;
+  ruleId?: string;
   severity: "critical" | "high" | "info" | "low" | "medium";
   status: "acknowledged" | "dismissed" | "open" | "resolved";
+  subjectId?: string;
 }
 
 export interface SignatureEntitlement {

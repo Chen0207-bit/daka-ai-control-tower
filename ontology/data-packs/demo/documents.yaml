@@ -1,0 +1,14 @@
+documents:
+  - id: d0000000-0000-4000-8000-0000000000e1
+    uri: https://example.invalid/demo/contract-DEMO-001.pdf
+    sha256: "0000000000000000000000000000000000000000000000000000000000de0001"
+    mediaType: application/pdf
+    version: "1"
+    capturedAt: "2026-01-15T09:00:00+08:00"
+
+anchors:
+  - id: d0000000-0000-4000-8000-0000000000e2
+    documentId: d0000000-0000-4000-8000-0000000000e1
+    locatorType: page_clause
+    locator: {page: 8, clause: "3.2"}
+    excerptHash: "0000000000000000000000000000000000000000000000000000000000ea0001"

@@ -472,7 +472,7 @@
       }
     }
   },
-  "fingerprint": "5bd74d5b8f497bb3f8b6dace0bf9e3387774c90655a3e2937e4c75aa3b93de00",
+  "fingerprint": "34366272685080a65aee9c118d680a85b52b825e90fa05773b781d502d1b821a",
   "interfaces": {
     "IPAsset": {
       "description": "可被授权和商业化的长期 IP 资产接口",
@@ -637,6 +637,12 @@
       "from": "SignatureMovement",
       "status": "draft",
       "to": "SignatureLot"
+    },
+    "signatureMovementForProject": {
+      "cardinality": "many_to_one",
+      "from": "SignatureMovement",
+      "status": "draft",
+      "to": "ReleaseProject"
     },
     "talentAffiliation": {
       "cardinality": "many_to_one",
@@ -2209,6 +2215,14 @@
           "status": "TBD",
           "type": "string"
         },
+        "ruleId": {
+          "description": "产生该风险的规则 ID（人工风险为空）",
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        },
         "severity": {
           "immutable": false,
           "origin": "own",
@@ -2224,6 +2238,14 @@
           "required": true,
           "security": "internal",
           "type": "enum"
+        },
+        "subjectId": {
+          "description": "风险指向的对象",
+          "immutable": false,
+          "origin": "own",
+          "required": false,
+          "security": "internal",
+          "type": "uuid"
         }
       },
       "implements": [],
@@ -2253,6 +2275,13 @@
           "status": "TBD",
           "type": "string"
         },
+        "ruleId": {
+          "description": "产生该风险的规则 ID（人工风险为空）",
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "string"
+        },
         "severity": {
           "immutable": false,
           "ref": "riskSeverity",
@@ -2266,6 +2295,13 @@
           "required": true,
           "security": "internal",
           "type": "enum"
+        },
+        "subjectId": {
+          "description": "风险指向的对象",
+          "immutable": false,
+          "required": false,
+          "security": "internal",
+          "type": "uuid"
         }
       }
     },
@@ -2548,11 +2584,12 @@
       "description": "签名额度或实物库存的不可变流转事件",
       "fields": {
         "actorId": {
+          "description": "平台 actor 标识（非对象外键）",
           "immutable": false,
           "origin": "own",
           "required": true,
           "security": "internal",
-          "type": "uuid"
+          "type": "string"
         },
         "id": {
           "immutable": true,
@@ -2594,10 +2631,11 @@
       "implements": [],
       "properties": {
         "actorId": {
+          "description": "平台 actor 标识（非对象外键）",
           "immutable": false,
           "required": true,
           "security": "internal",
-          "type": "uuid"
+          "type": "string"
         },
         "id": {
           "immutable": true,

@@ -653,6 +653,10 @@
         "maxLength": 512,
         "type": "string"
       },
+      "ruleId": {
+        "maxLength": 512,
+        "type": "string"
+      },
       "severity": {
         "enum": [
           "critical",
@@ -670,6 +674,10 @@
           "open",
           "resolved"
         ],
+        "type": "string"
+      },
+      "subjectId": {
+        "format": "uuid",
         "type": "string"
       }
     },
@@ -786,7 +794,7 @@
     "additionalProperties": false,
     "properties": {
       "actorId": {
-        "format": "uuid",
+        "maxLength": 512,
         "type": "string"
       },
       "id": {

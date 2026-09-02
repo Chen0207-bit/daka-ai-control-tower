@@ -1,0 +1,105 @@
+objects:
+  # === IP 资产 ===
+  - type: FootballClub
+    id: d0000000-0000-4000-8000-0000000000a1
+    data: {canonicalName: "AC 米兰", alternateNames: ["AC Milan"], countryOrRegion: 意大利, league: 意甲, sourceSystem: demo_pack}
+  - type: FootballClub
+    id: d0000000-0000-4000-8000-0000000000a2
+    data: {canonicalName: "纽卡斯尔联", alternateNames: ["Newcastle United"], countryOrRegion: 英格兰, league: 英超, sourceSystem: demo_pack}
+  - type: TVSeries
+    id: d0000000-0000-4000-8000-0000000000a3
+    data: {canonicalName: "影视 IP·代号 PB", productionCompany: "制作方·代号 PB", releaseYear: 2025, sourceSystem: demo_pack}
+
+  # === 主体与人物（花名/代号，非真实个人信息） ===
+  - type: Party
+    id: d0000000-0000-4000-8000-0000000000b1
+    data: {legalName: "DAKA 公司（演示）", partyType: licensee}
+  - type: Party
+    id: d0000000-0000-4000-8000-0000000000b2
+    data: {legalName: "版权方·代号 A", partyType: licensor}
+  - type: Talent
+    id: d0000000-0000-4000-8000-0000000000c1
+    data: {canonicalName: "球员·代号 K", alternateNames: []}
+  - type: Talent
+    id: d0000000-0000-4000-8000-0000000000c2
+    data: {canonicalName: "演员·代号 L", alternateNames: []}
+  - type: Affiliation
+    id: d0000000-0000-4000-8000-0000000000c3
+    data: {affiliationType: player_contract, validFrom: "2025-07-01", validTo: "2027-06-30"}
+
+  # === 合同与权益 ===
+  - type: Contract
+    id: d0000000-0000-4000-8000-0000000000d1
+    data:
+      contractNumber: DEMO-2026-001
+      title: "AC 米兰 2026 授权合同（演示推演）"
+      status: active
+      signedAt: "2026-01-10"
+      effectiveFrom: "2026-01-01"
+      effectiveTo: "2027-12-31"
+      governingLaw: 演示法域
+      documentId: d0000000-0000-4000-8000-0000000000e1
+  - type: RightsGrant
+    id: d0000000-0000-4000-8000-0000000000f1
+    data:
+      rightType: portrait_usage_tbc   # OQ-002: “销项权/肖像权”待客户确认
+      territory: [中国大陆]
+      channel: [线上电商, 线下零售]
+      productCategory: [纸质收藏卡]
+      exclusivity: non_exclusive
+      validFrom: "2026-01-01"
+      validTo: "2026-12-31"
+      approvalRequired: true
+  - type: Obligation
+    id: d0000000-0000-4000-8000-0000000000f2
+    data: {obligationType: design_approval, description: "设计稿须送 IP 方审批（演示推演）", dueAt: "2026-04-01T00:00:00+08:00", completionStatus: pending}
+
+  # === 付款 ===
+  - type: PaymentSchedule
+    id: d0000000-0000-4000-8000-000000000101
+    data: {amount: "500000", currency: CNY, dueAt: "2026-03-01T00:00:00+08:00", triggerCondition: "合同生效后 60 天（演示推演）", status: paid}
+  - type: PaymentSchedule
+    id: d0000000-0000-4000-8000-000000000102
+    data: {amount: "500000", currency: CNY, dueAt: "2026-06-01T00:00:00+08:00", triggerCondition: "首批大货交付（演示推演）", status: planned}
+  - type: Payment
+    id: d0000000-0000-4000-8000-000000000110
+    data: {amount: "500000", currency: CNY, paidAt: "2026-02-28T10:30:00+08:00", transactionReference: DEMO-TX-0001}
+
+  # === 签名额度与实物 ===
+  - type: SignatureEntitlement
+    id: d0000000-0000-4000-8000-000000000201
+    data: {grantedQuantity: 1000, unit: 张, validFrom: "2026-01-01", validTo: "2027-12-31", constraints: "限球员·代号 K 亲签（演示推演）"}
+  - type: SignatureLot
+    id: d0000000-0000-4000-8000-000000000210
+    data: {lotNumber: LOT-DEMO-2026-001, receivedQuantity: 400, receivedAt: "2026-02-10T14:00:00+08:00", qualityStatus: passed}
+  - type: SignatureMovement
+    id: d0000000-0000-4000-8000-000000000211
+    data: {movementType: received, quantity: 400, occurredAt: "2026-02-10T14:00:00+08:00", reason: "首批收货（演示推演）", actorId: d0000000-0000-4000-8000-0000000000b1}
+  - type: SignatureMovement
+    id: d0000000-0000-4000-8000-000000000212
+    data: {movementType: allocated, quantity: 150, occurredAt: "2026-03-05T09:00:00+08:00", reason: "春季卡盒分配（演示推演）", actorId: d0000000-0000-4000-8000-0000000000b1}
+
+  # === 发行项目与 SKU ===
+  - type: ReleaseProject
+    id: d0000000-0000-4000-8000-000000000301
+    data: {projectName: "AC 米兰 2026 春季卡盒（演示推演）", stage: selling, plannedLaunchAt: "2026-04-15", ownerId: d0000000-0000-4000-8000-0000000000b1}
+  - type: SKU
+    id: d0000000-0000-4000-8000-000000000311
+    data: {skuCode: SKU-ACM-2026-001, productName: "春季卡盒·基础包（演示推演）", category: trading_card}
+
+  # === 二级市场观察与建议（演示推演指标） ===
+  - type: MarketObservation
+    id: d0000000-0000-4000-8000-000000000401
+    data: {source: kaitao_demo, observedAt: "2026-09-01T00:00:00+08:00", windowDays: 7, currency: CNY, salePrice: "899", volume: 320, uniqueBuyers: 210, premiumRate: "0.62", turnoverRate: "0.18", spread: "45", notes: "演示推演"}
+  - type: MarketObservation
+    id: d0000000-0000-4000-8000-000000000402
+    data: {source: kaitao_demo, observedAt: "2026-09-01T00:00:00+08:00", windowDays: 30, currency: CNY, salePrice: "1299", volume: 120, uniqueBuyers: 96, premiumRate: "0.35", notes: "演示推演"}
+  - type: ReleaseRecommendation
+    id: d0000000-0000-4000-8000-000000000410
+    data:
+      recommendationType: reprint
+      status: suggested
+      rationale: "近 7 天溢价率 0.62、成交 320 笔（演示推演阈值规则 marketPremiumSpike 触发）"
+      metricSnapshot: {premiumRate: "0.62", volume: 320, windowDays: 7}
+      createdBy: rule-runner
+      createdAt: "2026-09-02T08:00:00+08:00"

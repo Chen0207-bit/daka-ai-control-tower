@@ -1,0 +1,11 @@
+pack:
+  id: daka-demo-pack
+  version: 1.0.0
+  ontologyConstraint: "^1.0.0"
+  source: demo_assumption
+  tenantId: d0000000-0000-4000-8000-000000000001
+  workspaceId: d0000000-0000-4000-8000-000000000002
+  description: >
+    演示推演数据包：三个 IP（AC 米兰、纽卡斯尔联、影视 IP·代号 PB）的安全合成实例。
+    所有金额、日期、合同内容、市场指标均为虚构演示数据；未官宣合作一律使用代号。
+    可替换：真实客户数据到位后用同格式 pack 替换；幂等导入由内容指纹保证。
