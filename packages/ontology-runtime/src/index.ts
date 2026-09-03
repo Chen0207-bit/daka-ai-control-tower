@@ -1,5 +1,5 @@
-export { executeAction } from "./actions/engine";
-export type { ActionEngineOptions, ActionHandler, DerivedResolver, ExecuteRequest, ExecuteResult, HandlerContext } from "./actions/engine";
+export { executeAction, executeTracedAction } from "./actions/engine";
+export type { ActionEngineOptions, ActionHandler, DerivedResolver, ExecuteRequest, ExecuteResult, HandlerContext, TracedActionResult } from "./actions/engine";
 export { buildHandlers, factTargetLoader } from "./actions/handlers";
 export type { CandidateFactProvider } from "./actions/handlers";
 export { makeContext } from "./context";
@@ -25,4 +25,30 @@ export type { ObjectRecord } from "./repository";
 export { evaluateRule } from "./rules/evaluator";
 export { materializeFindings, runRules } from "./rules/runner";
 export type { RuleFinding } from "./rules/runner";
+export {
+  committedFor,
+  getTrace,
+  instrumentClient,
+  isFailedTrace,
+  persistTraceSafe,
+  queryTraces,
+  sanitizeTrace,
+  sanitizeTraceAttributes,
+  traceStatusForErrorCode,
+  TraceRecorder,
+  TRACE_SCHEMA_VERSION,
+  TRACE_STAGES,
+} from "./trace";
+export type {
+  ExecutionTrace,
+  StoredTraceRow,
+  TraceMode,
+  TraceQuery,
+  TraceSpan,
+  TraceSpanStatus,
+  TraceStage,
+  TraceStatus,
+  TraceSummary,
+  TraceWriteOp,
+} from "./trace";
 export { validateInstance } from "./validate-instance";

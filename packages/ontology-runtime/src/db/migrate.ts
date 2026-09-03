@@ -53,6 +53,7 @@ const REQUIRED_TABLES = [
   "documents",
   "evidence_anchors",
   "action_runs",
+  "action_traces",
   "audit_events",
   "outbox_events",
   "projection_checkpoints",

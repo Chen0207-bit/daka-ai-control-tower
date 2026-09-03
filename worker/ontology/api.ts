@@ -15,8 +15,9 @@ import {
   derivedResolvers,
   ensureRelease,
   evaluatePolicy,
-  executeAction,
+  executeTracedAction,
   factTargetLoader,
+  getTrace,
   listFacts,
   listLinks,
   listObjects,
@@ -26,6 +27,7 @@ import {
   materializeFindings,
   paymentCalendar,
   proposeFact,
+  queryTraces,
   rejectFact,
   runRules,
   signatureOverview,
@@ -281,7 +283,9 @@ export async function handleOntologyApi(request: Request, env: OntologyEnv): Pro
     const actionExec = /^\/v1\/actions\/([a-z][A-Za-z0-9]*)\/execute$/.exec(path);
     if (actionExec && request.method === "POST") {
       const body = await readJson(request);
-      const result = await executeAction(
+      // mode=plan 为 dry-run：全链路校验但不落库（committed 恒为 false）
+      const mode = body.mode === "plan" ? "plan" : "execute";
+      const traced = await executeTracedAction(
         pool,
         manifest,
         { handlers: buildHandlers(), derived: derivedResolvers, targetLoaders: { FactAssertion: factTargetLoader } },
@@ -292,9 +296,33 @@ export async function handleOntologyApi(request: Request, env: OntologyEnv): Pro
           input: (body.input ?? {}) as Record<string, unknown>,
           idempotencyKey: String(body.idempotencyKey ?? ""),
           expectedVersion: typeof body.expectedVersion === "number" ? body.expectedVersion : undefined,
+          mode,
         },
       );
-      return json(result);
+      // 失败链不伪造 committed：trace.status/error 驱动 HTTP 语义
+      if (!traced.ok) return json({ error: traced.error, trace: traced.trace }, httpStatusFor(traced.error!.code));
+      return json({ ...traced.result, trace: traced.trace });
+    }
+
+    // 可观察性：ExecutionTrace 查询（列表为摘要级；单条含完整 spans）
+    if (path === "/v1/traces" && request.method === "GET") {
+      const items = await withTx(pool, ctx, (c) =>
+        queryTraces(c, ctx, {
+          traceId: url.searchParams.get("traceId") ?? undefined,
+          correlationId: url.searchParams.get("correlationId") ?? undefined,
+          actionId: url.searchParams.get("actionId") ?? undefined,
+          status: url.searchParams.get("status") ?? undefined,
+          limit: Number(url.searchParams.get("limit") ?? 50),
+        }),
+      );
+      return json({ items });
+    }
+
+    const traceGet = /^\/v1\/traces\/([0-9a-f-]{36})$/.exec(path);
+    if (traceGet && request.method === "GET") {
+      const stored = await withTx(pool, ctx, (c) => getTrace(c, ctx, traceGet[1]));
+      if (!stored) throw new RuntimeError(RUNTIME_ERRORS.NOT_FOUND, `trace ${traceGet[1]} 不存在`);
+      return json(stored);
     }
 
     const proj = /^\/v1\/projections\/([a-z][A-Za-z0-9]*)$/.exec(path);
