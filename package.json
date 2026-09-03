@@ -31,7 +31,8 @@
     "seed:demo:dry": "pnpm --filter @daka/ontology-runtime exec tsx src/ingest/seed-cli.ts --dry-run",
     "test:e2e": "node scripts/e2e-api.mjs",
     "test:integration": "pnpm --filter @daka/ontology-runtime run test",
-    "test:ui": "vitest run --config vitest.ui.config.ts"
+    "test:ui": "vitest run --config vitest.ui.config.ts",
+    "cli": "pnpm --filter @daka/ontology-runtime run cli"
   },
   "dependencies": {
     "@daka/ontology-client": "workspace:^",
