@@ -25,6 +25,8 @@ export type { ObjectRecord } from "./repository";
 export { evaluateRule } from "./rules/evaluator";
 export { materializeFindings, runRules } from "./rules/runner";
 export type { RuleFinding } from "./rules/runner";
+export { QUERY_STAGES, PARTY_ROLE, composeAnswer, dataSourceNote, labelFor, loadGraph, localRoute, runQuery } from "./query/pipeline";
+export type { GraphEdge, GraphNode, QueryIntent, QuerySpan, QueryStage, QueryTrace, RunQueryOptions } from "./query/pipeline";
 export {
   committedFor,
   getTrace,
