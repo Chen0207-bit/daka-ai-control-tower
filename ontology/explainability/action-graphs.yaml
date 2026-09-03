@@ -1,0 +1,206 @@
+# DAKA Ontology 可解释性元数据（机器可读）
+# 四条业务闭环的行动子图与来源引用（provenance），供控制塔/UI/验收脚本消费。
+# 本文件不参与 DSL 编译（编译输入仅为 ontology/schema/v1/**）；
+# 一致性由 packages/ontology-runtime/test/acceptance.contract.test.ts 交叉校验。
+#
+# provenance 取值（来源级别，从弱到强）：
+#   assumed    业务假设（未证实，仅用于占位，如 02_PRESET_INTERVIEW_ANSWERS）
+#   demo       演示推演合成数据（pack.source: demo_assumption，可整体替换）
+#   imported   外部系统导入（connector，附 job/batch 引用）
+#   evidence   有证据锚点（evidenceAnchorId 指向文档/哈希/页码），但未经人工确认
+#   verified   人工确认（fact.confirm / dataSteward 等复核角色签字）
+# 决策来源（decisionBy）：
+#   ai        AI/规则引擎只能产生 proposed 事实或建议（suggested/in_review）
+#   human     高风险状态变化必须由人工角色执行（action.actorRoles 白名单）
+
+version: 1
+ontologyConstraint: "^1.0.0"
+
+provenanceLevels: [assumed, demo, imported, evidence, verified]
+
+# ============================================================
+# 闭环 1：市场建议（AI 建议只读口径 → 人工评审；AI 无权改印量）
+# ============================================================
+loops:
+  marketRecommendation:
+    title: 市场建议闭环
+    narrative: >
+      二级市场观察（口径可见）→ 规则生成发行建议（suggested，只能人工评审）
+      → executiveViewer/ipOperations 决定 approve/reject。AI 与规则引擎
+      无权直接修改印量、限编或价格；改印量需另行走人工授权的 Action。
+    nodes:
+      - id: marketObservation
+        objectType: MarketObservation
+        provenance: demo            # 演示推演指标（source: kaitao_demo）
+        decisionBy: human           # 数据登记为人工/导入；不产生状态变化
+        sourceRef: {pack: daka-demo-pack, file: ontology/data-packs/demo/objects.yaml}
+      - id: recommendation
+        objectType: ReleaseRecommendation
+        provenance: demo
+        decisionBy: ai              # 规则阈值生成（createdBy: rule-runner）
+        sourceRef: {pack: daka-demo-pack, file: ontology/data-packs/demo/objects.yaml}
+        guard: >
+          AI 只能创建/更新 suggested 或 in_review 建议；
+          印量/限编/价格字段不在任何 AI 可调用 action 的 effects 中。
+      - id: humanDecision
+        action: reviewReleaseRecommendation
+        objectType: ReleaseRecommendation
+        provenance: verified        # 人工决定进入审计链
+        decisionBy: human
+        humanRoles: [executiveViewer, ipOperations]
+        transitions: {from: [suggested, in_review], to: [approved, rejected]}
+        sourceRef: {file: ontology/schema/v1/actions.yaml}
+    policyGuarantees:
+      - aiCannotMutatePrintRun:
+          description: 不存在 actorRoles 含 systemAgent 且 effects 触及印量/价格字段的 action
+          contractTest: "acceptance.contract.test.ts :: AI 不可直接修改印量"
+      - recommendationRequiresHuman: 人工评审是唯一状态迁移出口（preconditions 限定 status ∈ {suggested, in_review}）
+
+  # ==========================================================
+  # 闭环 2：签名额度（守恒 + 超额阻断）
+  # ==========================================================
+  signatureQuota:
+    title: 签名额度闭环
+    narrative: >
+      合同授予额度（grantedQuantity，evidence 级合同条款）→ 批次入库
+      （received movement）→ 分配到发行项目（allocated movement）
+      → 余额重算 = Σreceived − Σallocated − Σconsumed。
+      任何 movement 只能追加（append-only），不允许改历史；
+      服务端 precondition availableQuantity ≥ quantity 阻断超额分配。
+    nodes:
+      - id: entitlement
+        objectType: SignatureEntitlement
+        provenance: evidence        # 合同条款推导
+        decisionBy: human
+        sourceRef: {file: ontology/data-packs/demo/objects.yaml}
+      - id: receiveLot
+        action: receiveSignatureLot
+        objectType: SignatureLot
+        provenance: evidence        # 必填 evidenceAnchorId
+        decisionBy: human
+        humanRoles: [ipOperations]
+        effects: [createSignatureLot, appendReceivedMovement, recalculateSignatureBalance]
+      - id: allocate
+        action: allocateSignatures
+        objectType: SignatureLot
+        provenance: verified
+        decisionBy: human
+        humanRoles: [ipOperations]
+        effects: [appendAllocatedMovement, recalculateSignatureBalance]
+        guard: "precondition: {op: gte, path: target.availableQuantity, valuePath: input.quantity} — 超额即 deny"
+      - id: negativeBalanceRule
+        rule: signatureBalanceNegative
+        objectType: SignatureLot
+        provenance: evidence
+        decisionBy: human           # 规则只发现风险，不阻断写路径之外的状态变化
+        effects: [blockMovementAndCreateRiskFinding]
+    policyGuarantees:
+      - conservation: 余额只能通过 append movement 变化；无直接 set balance 的 action
+      - overdrawBlocked: 超额分配在服务端 precondition 拒绝（非前端校验）
+
+  # ==========================================================
+  # 闭环 3：合同链（evidence → candidate → verified → rights/risk）
+  # ==========================================================
+  contractChain:
+    title: 合同权益闭环
+    narrative: >
+      上传合同原文（文档 + sha256）→ 抽取器产出候选事实（proposed，
+      必须挂证据锚点）→ 人工 confirm/reject → verified 事实物化为
+      规范值（RightsGrant/Obligation）→ 规则生成 RiskFinding →
+      法务凭证据关闭风险。证据可追溯到文档页码与哈希。
+    nodes:
+      - id: upload
+        action: uploadContract
+        objectType: Contract
+        provenance: evidence
+        decisionBy: human
+        humanRoles: [legalOperator]
+        effects: [createDocumentVersion, createContractDraft]
+      - id: extract
+        action: extractContractCandidates
+        objectType: Contract
+        provenance: evidence        # candidate 必须挂 evidenceAnchorId
+        decisionBy: ai              # 只能产生 proposed，附 confidence
+        effects: [createProposedFactAssertions, attachEvidenceAnchors]
+      - id: candidateFact
+        objectType: FactAssertion
+        provenance: evidence
+        decisionBy: ai
+        status: proposed
+        sourceRef: {pack: daka-demo-pack, file: ontology/data-packs/demo/facts.yaml}
+      - id: confirm
+        action: confirmFact
+        objectType: FactAssertion
+        provenance: verified
+        decisionBy: human
+        humanRoles: [dataSteward, legalReviewer, financeReviewer]
+        transitions: {from: [proposed], to: [verified]}
+        guard: "preconditions: status=proposed 且 evidenceAnchorId 存在 — 无证据不得确认"
+      - id: reject
+        action: rejectFact
+        objectType: FactAssertion
+        provenance: verified        # 驳回也是人工决定，进审计链
+        decisionBy: human
+        humanRoles: [dataSteward, legalReviewer, financeReviewer]
+        transitions: {from: [proposed], to: [rejected]}
+      - id: supersede
+        action: supersedeFact
+        objectType: FactAssertion
+        provenance: verified
+        decisionBy: human
+        humanRoles: [dataSteward]
+        transitions: {from: [verified], to: [superseded]}
+        guard: 双时态：旧事实 superseded_at 置位，新事实独立 valid_from/valid_to
+      - id: materializedRights
+        objectType: RightsGrant
+        provenance: verified        # 由 verified 事实物化
+        decisionBy: human
+      - id: riskResolution
+        action: resolveContractRisk
+        objectType: RiskFinding
+        provenance: verified
+        decisionBy: human
+        humanRoles: [legalReviewer]
+        guard: 必填 evidenceAnchorId — 关闭风险也要证据
+    rules: [rightsScopeGap, verifiedFactMissingEvidence]
+
+  # ==========================================================
+  # 闭环 4：付款链（action → policy → rule → projection）
+  # ==========================================================
+  paymentChain:
+    title: 付款闭环
+    narrative: >
+      合同生成 PaymentSchedule（evidence 级合同条款）→ financeOperator
+      登记 Payment（action: recordPayment，校验币种一致、金额>0）
+      → 规则 paymentOverdue 生成 RiskFinding → 投影 paymentCalendar
+      汇总应付/已付/逾期，进入 bossActionInbox。每步写操作带
+      correlationId 进入 audit/outbox。
+    nodes:
+      - id: schedule
+        objectType: PaymentSchedule
+        provenance: evidence
+        decisionBy: human
+      - id: recordPayment
+        action: recordPayment
+        objectType: PaymentSchedule
+        provenance: evidence        # 交易凭证引用（transactionReference）
+        decisionBy: human
+        humanRoles: [financeOperator]
+        effects: [createPaymentEvent, recalculateScheduleStatus]
+        guard: "preconditions: amount>0 且 input.currency = target.currency"
+      - id: overdueRule
+        rule: paymentOverdue
+        objectType: PaymentSchedule
+        provenance: evidence
+        decisionBy: human           # 规则产出风险项，不做状态变化
+        effects: [createOrUpdateRiskFinding]
+      - id: calendar
+        projection: paymentCalendar
+        provenance: verified        # 投影只读，由 verified/evidence 数据推导
+        decisionBy: human
+      - id: bossInbox
+        projection: bossActionInbox
+        provenance: verified
+        decisionBy: human
+    policyGuarantees:
+      - auditTrail: 每个 action 写操作写入 audit_events + outbox_events，携带 correlationId（traceId 贯穿）
