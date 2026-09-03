@@ -20,7 +20,7 @@ const ok = (name, cond, extra = "") => {
 const RUN = String(Date.now()).slice(-12).padStart(12, "0");
 const id = (suffix) => `e2e00000-0000-4000-8000-${String(Number(RUN) + parseInt(suffix.slice(-4), 16) % 0xffffffff).slice(-12).padStart(12, "0")}`;
 
-async function call(path, { method = "GET", roles = ["executiveViewer"], actor = "e2e", body } = {}) {
+async function call(path, { method = "GET", roles = ["executiveViewer"], actor = "e2e", body, corr } = {}) {
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
@@ -29,6 +29,7 @@ async function call(path, { method = "GET", roles = ["executiveViewer"], actor =
       "x-workspace-id": WS,
       "x-actor-id": actor,
       "x-actor-roles": roles.join(","),
+      ...(corr ? { "x-correlation-id": corr } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -105,6 +106,99 @@ console.log(`E2E against ${BASE}`);
   const cal = await call("/v1/projections/paymentCalendar", { roles: ["financeOperator"] });
   const item = cal.data?.items?.find((x) => x.id === id("000000000101"));
   ok("投影反映已付", item?.status === "paid" && item?.unsettledAmount === 0, JSON.stringify(item));
+}
+
+// 2b. Trace 契约与可观察性（G1：plan 零写入 / 拒绝 / 前置失败 / 成功 / 幂等 / 刷新重开）
+{
+  const sched = id("0000000001b1");
+  const s = await call("/v1/objects", {
+    method: "POST", roles: ["financeOperator"], actor: "e2e-fin",
+    body: { type: "PaymentSchedule", id: sched, data: { amount: "900", currency: "CNY", dueAt: "2031-01-01T00:00:00Z", status: "planned" } },
+  });
+  ok("创建 PaymentSchedule（trace 段）", s.status === 201, JSON.stringify(s.data));
+
+  const auditCount = async () => (await call("/v1/audit?limit=500", { roles: ["dataSteward"] })).data?.items?.length ?? -1;
+  const calItem = async () => (await call("/v1/projections/paymentCalendar", { roles: ["financeOperator"] })).data?.items?.find((x) => x.id === sched);
+
+  // plan：全链路校验但零业务写入
+  const auditBeforePlan = await auditCount();
+  const planRes = await call("/v1/actions/recordPayment/execute", {
+    method: "POST", roles: ["financeOperator"], actor: "e2e-fin",
+    body: { targetId: sched, input: { amount: "900", currency: "CNY", paidAt: "2026-09-03T00:00:00Z" }, idempotencyKey: "e2e-plan-" + RUN, mode: "plan" },
+  });
+  ok("plan 200 + status=planned + committed=false + runId=null",
+    planRes.status === 200 && planRes.data?.status === "planned" && planRes.data?.trace?.committed === false && planRes.data?.trace?.runId === null,
+    JSON.stringify(planRes.data).slice(0, 240));
+  ok("plan 内嵌 trace.mode=plan 且 traceId 存在", planRes.data?.trace?.mode === "plan" && typeof planRes.data?.trace?.traceId === "string");
+  const planTraceId = planRes.data?.trace?.traceId;
+  ok("plan 前后 audit 零新增", (await auditCount()) === auditBeforePlan);
+  const calPlan = await calItem();
+  ok("plan 后投影不变（unsettled 仍为 900）", calPlan?.unsettledAmount === 900 && calPlan?.status === "planned", JSON.stringify(calPlan));
+  const planWrites = planRes.data?.trace?.spans?.find((x) => x.stage === "writeset.planned");
+  ok("plan 写集为空/skipped", !planWrites || planWrites.status === "skipped" || (planWrites.attributes?.writes ?? []).length === 0);
+  const reopenPlan = await call(`/v1/traces/${planTraceId}`, { roles: ["financeOperator"] });
+  ok("plan trace 持久化可重开（刷新可复现）", reopenPlan.status === 200 && reopenPlan.data?.trace?.traceId === planTraceId && reopenPlan.data?.trace?.status === "planned", JSON.stringify(reopenPlan.data).slice(0, 200));
+
+  // 拒绝：无权限角色停在 policy，业务写入为 0
+  const auditBeforeDeny = await auditCount();
+  const denied = await call("/v1/actions/recordPayment/execute", {
+    method: "POST", roles: ["executiveViewer"], actor: "e2e-exec",
+    body: { targetId: sched, input: { amount: "900", currency: "CNY", paidAt: "2026-09-03T00:00:00Z" }, idempotencyKey: "e2e-deny-t-" + RUN, mode: "execute" },
+  });
+  ok("越权 403 + 内嵌 trace.status=denied + committed=false",
+    denied.status === 403 && denied.data?.trace?.status === "denied" && denied.data?.trace?.committed === false,
+    JSON.stringify(denied.data).slice(0, 240));
+  ok("denied 失败定位在 policy span", denied.data?.trace?.spans?.find((x) => x.stage === "policy")?.status === "failed");
+  ok("denied 后 audit 零新增", (await auditCount()) === auditBeforeDeny);
+  const deniedTraceId = denied.data?.trace?.traceId;
+  const reopenDenied = await call(`/v1/traces/${deniedTraceId}`, { roles: ["financeOperator"] });
+  ok("denied trace 可重开且状态一致", reopenDenied.status === 200 && reopenDenied.data?.trace?.status === "denied");
+
+  // 前置条件失败：错误币种停在 preconditions，业务写入为 0
+  const auditBeforePre = await auditCount();
+  const bad = await call("/v1/actions/recordPayment/execute", {
+    method: "POST", roles: ["financeOperator"], actor: "e2e-fin",
+    body: { targetId: sched, input: { amount: "900", currency: "USD", paidAt: "2026-09-03T00:00:00Z" }, idempotencyKey: "e2e-bad-" + RUN, mode: "execute" },
+  });
+  ok("错误币种 422 + trace.status=precondition_failed + committed=false",
+    bad.status === 422 && bad.data?.trace?.status === "precondition_failed" && bad.data?.trace?.committed === false,
+    JSON.stringify(bad.data).slice(0, 240));
+  ok("precondition span 定位失败点", bad.data?.trace?.spans?.find((x) => x.stage === "preconditions")?.status === "failed");
+  ok("前置失败后 audit 零新增", (await auditCount()) === auditBeforePre);
+  const calBad = await calItem();
+  ok("前置失败后投影不变", calBad?.unsettledAmount === 900 && calBad?.status === "planned");
+
+  // 成功：completed + committed + 写集 + correlationId 贯穿
+  const corr = "e2e-corr-" + RUN;
+  const pay = await call("/v1/actions/recordPayment/execute", {
+    method: "POST", roles: ["financeOperator"], actor: "e2e-fin", corr,
+    body: { targetId: sched, input: { amount: "900", currency: "CNY", paidAt: "2026-09-03T00:00:00Z" }, idempotencyKey: "e2e-pay-t-" + RUN, mode: "execute" },
+  });
+  ok("execute 200 + trace.status=completed + committed=true",
+    pay.status === 200 && pay.data?.trace?.status === "completed" && pay.data?.trace?.committed === true,
+    JSON.stringify(pay.data).slice(0, 240));
+  ok("execute traceId 来自内嵌 trace", typeof pay.data?.trace?.traceId === "string" && pay.data?.trace?.traceId.length === 36);
+  const payWrites = pay.data?.trace?.spans?.find((x) => x.stage === "writeset.planned")?.attributes?.writes ?? [];
+  ok("写集含业务对象/审计/outbox 写", payWrites.some((w) => w.table === "object_records") && payWrites.some((w) => w.table === "audit_events") && payWrites.some((w) => w.table === "outbox_events"), JSON.stringify(payWrites));
+  const calPaid = await calItem();
+  ok("成功后投影反映已结清", calPaid?.status === "paid" && calPaid?.unsettledAmount === 0, JSON.stringify(calPaid));
+  const reopenPay = await call(`/v1/traces/${pay.data?.trace?.traceId}`, { roles: ["financeOperator"] });
+  ok("成功 trace 刷新后可重开（spans 完整）", reopenPay.status === 200 && reopenPay.data?.trace?.spans?.length >= 9 && reopenPay.data?.trace?.committed === true);
+  const auditItems = (await call("/v1/audit?limit=500", { roles: ["dataSteward"] })).data?.items ?? [];
+  ok("correlationId 关联 Action/Audit", auditItems.some((a) => a.correlation_id === corr), corr);
+
+  // 幂等重放：同 key 同载荷不产生重复付款
+  const replay = await call("/v1/actions/recordPayment/execute", {
+    method: "POST", roles: ["financeOperator"], actor: "e2e-fin",
+    body: { targetId: sched, input: { amount: "900", currency: "CNY", paidAt: "2026-09-03T00:00:00Z" }, idempotencyKey: "e2e-pay-t-" + RUN, mode: "execute" },
+  });
+  ok("幂等重放 replayed + 同 runId + 不重复结清", replay.data?.status === "replayed" && replay.data?.runId === pay.data?.runId && replay.data?.trace?.status === "replayed");
+  const calReplay = await calItem();
+  ok("重放后 settled 不翻倍", calReplay?.settledAmount === 900, JSON.stringify(calReplay));
+
+  // trace 列表可按 correlationId 过滤
+  const byCorr = await call(`/v1/traces?correlationId=${corr}`, { roles: ["financeOperator"] });
+  ok("trace 列表按 correlationId 关联", byCorr.data?.items?.some((t) => t.traceId === pay.data?.trace?.traceId), JSON.stringify(byCorr.data).slice(0, 200));
 }
 
 // 2.5 关系路由授权：越权创建 403；合法创建 201（关系委托 linkType.from 端点 write）
