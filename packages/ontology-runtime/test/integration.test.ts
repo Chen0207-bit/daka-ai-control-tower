@@ -8,6 +8,8 @@ import {
   derivedResolvers,
   ensureRelease,
   executeAction,
+  executeTracedAction,
+  getTrace,
   factTargetLoader,
   listFacts,
   listObjects,
@@ -17,6 +19,7 @@ import {
   maskRecord,
   paymentCalendar,
   proposeFact,
+  queryTraces,
   RUNTIME_ERRORS,
   RuntimeError,
   signatureOverview,
@@ -77,7 +80,7 @@ describe.skipIf(!DB_URL)("runtime 集成（真实 PostgreSQL + RLS 角色）", (
     ctx = makeContext({ tenantId: TENANT, workspaceId: WS, actorId: "test-setup", roles: ["dataSteward"] });
     // 可重跑：清空测试 tenant/workspace 的历史数据
     await withTx(pool, ctx, async (c) => {
-      for (const t of ["ingest_records", "ingest_jobs", "audit_events", "outbox_events", "action_runs", "link_records", "fact_assertions", "object_records", "evidence_anchors", "documents"]) {
+      for (const t of ["action_traces", "ingest_records", "ingest_jobs", "audit_events", "outbox_events", "action_runs", "link_records", "fact_assertions", "object_records", "evidence_anchors", "documents"]) {
         await c.query(`DELETE FROM ${t} WHERE tenant_id=$1 AND workspace_id=$2`, [TENANT, WS]);
       }
     });
@@ -218,6 +221,58 @@ describe.skipIf(!DB_URL)("runtime 集成（真实 PostgreSQL + RLS 角色）", (
       }),
       RUNTIME_ERRORS.VERSION_CONFLICT,
     );
+  });
+
+  it("ExecutionTrace：成功链持久化可查 / plan 不落库 / 拒绝链 committed=false", async () => {
+    await withTx(pool, STEWARD, (c) =>
+      createObject(c, STEWARD, manifest, releaseId, "PaymentSchedule", {
+        amount: "80", currency: "CNY", dueAt: "2030-01-01T00:00:00Z", status: "planned",
+      }, d("000000000111")),
+    );
+    // plan：全链路校验、零业务写入
+    const planned = await executeTracedAction(pool, manifest, engineOpts(), FINANCE, "recordPayment", {
+      targetId: d("000000000111"),
+      input: { amount: "80", currency: "CNY", paidAt: "2026-09-02T00:00:00Z" },
+      idempotencyKey: "trace-plan-1",
+      mode: "plan",
+    });
+    expect(planned.ok).toBe(true);
+    expect(planned.trace.status).toBe("planned");
+    expect(planned.trace.committed).toBe(false);
+    expect(planned.trace.spans.find((s) => s.stage === "transaction")!.status).toBe("ok");
+    const runsAfterPlan = await withTx(pool, FINANCE, async (c) => {
+      const { rows } = await c.query(`SELECT count(*)::int AS n FROM action_runs WHERE tenant_id=$1 AND workspace_id=$2 AND idempotency_key='trace-plan-1'`, [TENANT, WS]);
+      return rows[0].n;
+    });
+    expect(runsAfterPlan).toBe(0);
+
+    // 成功执行：trace 持久化、摘要查询、详情含 spans
+    const done = await executeTracedAction(pool, manifest, engineOpts(), FINANCE, "recordPayment", {
+      targetId: d("000000000111"),
+      input: { amount: "80", currency: "CNY", paidAt: "2026-09-02T00:00:00Z" },
+      idempotencyKey: "trace-exec-1",
+    });
+    expect(done.ok).toBe(true);
+    expect(done.trace.committed).toBe(true);
+    const summaries = await withTx(pool, FINANCE, (c) => queryTraces(c, FINANCE, { actionId: "recordPayment", correlationId: FINANCE.correlationId }));
+    const mine = summaries.filter((s) => s.traceId === done.trace.traceId);
+    expect(mine).toHaveLength(1);
+    expect(mine[0].committed).toBe(true);
+    const detail = await withTx(pool, FINANCE, (c) => getTrace(c, FINANCE, done.trace.traceId));
+    expect(detail!.trace.spans.map((s) => s.stage)).toContain("writeset.planned");
+
+    // 拒绝链：committed=false 且写入 action_traces
+    const denied = await executeTracedAction(pool, manifest, engineOpts(), LEGAL, "recordPayment", {
+      targetId: d("000000000111"),
+      input: { amount: "1", currency: "CNY", paidAt: "2026-09-02T00:00:00Z" },
+      idempotencyKey: "trace-deny-1",
+    });
+    expect(denied.ok).toBe(false);
+    expect(denied.trace.status).toBe("denied");
+    expect(denied.trace.committed).toBe(false);
+    const deniedRow = await withTx(pool, FINANCE, (c) => getTrace(c, FINANCE, denied.trace.traceId));
+    expect(deniedRow!.committed).toBe(false);
+    expect(deniedRow!.trace.spans.find((s) => s.stage === "policy")!.status).toBe("failed");
   });
 
   it("签名守恒：超额分配被服务端阻断；桶余额正确", async () => {
