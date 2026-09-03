@@ -104,6 +104,14 @@ export function PaymentWorkbench() {
 
   const allStages: UiStage[] = useMemo(() => (trace ? [...trace.stages, ...trace.extraStages] : []), [trace]);
 
+  // 加载新 trace 默认展示全部阶段的真实状态；「回放」才从第 1 步逐个点亮
+  const showTrace = useCallback((doc: TraceDoc, source: "api" | "mock", apiErr: { code: string; message: string } | null) => {
+    setTrace(doc);
+    setTraceSource(source);
+    setApiError(apiErr);
+    setSelectedStageIndex(doc.stages.length + doc.extraStages.length - 1);
+  }, []);
+
   // 回放：把阶段逐个点亮（只驱动 UI 演示，不重放请求）
   useEffect(() => {
     if (!replayActive || !trace) return;
@@ -138,10 +146,10 @@ export function PaymentWorkbench() {
     const fromUrl = traceIdFromUrl();
     if (fromUrl) {
       fetchStoredTrace("", REAL_ACTOR, fromUrl)
-        .then((doc) => { setTrace(doc); setTraceSource("api"); setApiError(doc.error); setSelectedStageIndex(0); })
+        .then((doc) => showTrace(doc, "api", doc.error))
         .catch((e) => setFatalError(e instanceof Error ? e.message : String(e)));
     }
-  }, [dataMode, loadReal]);
+  }, [dataMode, loadReal, showTrace]);
 
   const rememberTraceUrl = (traceId: string) => {
     if (typeof window === "undefined") return;
@@ -160,8 +168,7 @@ export function PaymentWorkbench() {
     try {
       if (dataMode === "mock") {
         // MOCK：用户显式选择的演示推演；committed 恒为 false，不伪装落库
-        setTrace(buildMockTrace({ targetId: obligation.id, amount: obligation.rawAmount, mode, seed: mode === "plan" ? 1 : 2 }));
-        setTraceSource("mock");
+        showTrace(buildMockTrace({ targetId: obligation.id, amount: obligation.rawAmount, mode, seed: mode === "plan" ? 1 : 2 }), "mock", null);
       } else {
         const outcome = await executeWithTrace("", REAL_ACTOR, "recordPayment", {
           targetId: obligation.id,
@@ -169,13 +176,10 @@ export function PaymentWorkbench() {
           idempotencyKey: `wb-${obligation.id.slice(-8)}-${mode}-${Date.now()}`,
           mode,
         });
-        setTrace(outcome.trace);
-        setTraceSource("api");
-        setApiError(outcome.apiError);
+        showTrace(outcome.trace, "api", outcome.apiError);
         rememberTraceUrl(outcome.trace.traceId);
         if (outcome.trace.committed) await loadReal(); // 投影为请求时推导：提交后重取左栏
       }
-      setSelectedStageIndex(0);
       setTab("diff");
     } catch (e) {
       // 真实模式失败：明确报错，保留既有 trace 不覆盖、绝不切换 MOCK
@@ -190,10 +194,7 @@ export function PaymentWorkbench() {
     setApiError(null);
     try {
       const doc = await fetchStoredTrace("", REAL_ACTOR, id.trim());
-      setTrace(doc);
-      setTraceSource("api");
-      setApiError(doc.error);
-      setSelectedStageIndex(0);
+      showTrace(doc, "api", doc.error);
       rememberTraceUrl(doc.traceId);
     } catch (e) {
       setFatalError(e instanceof Error ? e.message : String(e));

@@ -110,14 +110,7 @@ function rowsToIps(rows: ImportRow[], limit = 17): typeof baseIps {
 }
 
 export default function Home() {
-  const [view, setView] = useState<View>(() => {
-    // 支持 ?view=<id> 直达指定视图（验收截图、trace 重开链接使用）
-    if (typeof window !== "undefined") {
-      const v = new URLSearchParams(window.location.search).get("view");
-      if (v && nav.some((n) => n.id === v)) return v as View;
-    }
-    return "actions";
-  });
+  const [view, setView] = useState<View>("actions");
   const [collapsed, setCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
@@ -141,6 +134,15 @@ export default function Home() {
       .then(data => { setImportedIps(rowsToIps(data.ip || [])); setImportedLedgers(data.ledger || []); })
       .catch(() => undefined);
     return () => controller.abort();
+  }, []);
+
+  // ?view=<id> 直达指定视图（验收截图、trace 重开链接）；挂载后应用，避免 SSR 水合不匹配
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const v = new URLSearchParams(window.location.search).get("view");
+      if (v && nav.some((n) => n.id === v)) setView(v as View);
+    }, 0);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
