@@ -2,8 +2,9 @@
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { OntologyPanel } from "./ontology-panel";
+import { PaymentWorkbench } from "./workbench/payment-workbench";
 
-type View = "actions" | "operations" | "portfolio" | "cash" | "signals" | "data" | "release" | "blueprint" | "ontology";
+type View = "actions" | "operations" | "portfolio" | "cash" | "signals" | "data" | "release" | "blueprint" | "ontology" | "workbench";
 type ImportType = "ip" | "ledger";
 type ImportStage = "select" | "preview" | "done";
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -90,6 +91,7 @@ const nav: { id: View; label: string; icon: string }[] = [
   { id: "signals", label: "变动雷达", icon: "◎" },
   { id: "data", label: "数据中心", icon: "⇧" },
   { id: "ontology", label: "本体平台", icon: "⬡" },
+  { id: "workbench", label: "付款闭环调试", icon: "⌬" },
   { id: "blueprint", label: "能力蓝图", icon: "↗" },
 ];
 
@@ -160,6 +162,7 @@ export default function Home() {
       {view === "data" && <DataCenter onImport={openImport} />}
       {view === "release" && <Release initialProjectId={releaseProjectId} onBlueprint={() => setView("blueprint")} />}
       {view === "ontology" && <OntologyPanel />}
+      {view === "workbench" && <PaymentWorkbench />}
       {view === "blueprint" && <Blueprint />}
       <footer>DAKA AI 经营控制塔 · 新闻与经营数字均明确标记演示属性，不构成真实业务事实</footer>
     </section>

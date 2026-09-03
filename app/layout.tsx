@@ -4,6 +4,7 @@ import "./globals.css";
 import "./dashboard.css";
 import "./v11.css";
 import "./ontology-panel.css";
+import "./workbench/workbench.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

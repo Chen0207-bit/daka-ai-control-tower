@@ -30,7 +30,8 @@
     "seed:demo": "pnpm --filter @daka/ontology-runtime exec tsx src/ingest/seed-cli.ts",
     "seed:demo:dry": "pnpm --filter @daka/ontology-runtime exec tsx src/ingest/seed-cli.ts --dry-run",
     "test:e2e": "node scripts/e2e-api.mjs",
-    "test:integration": "pnpm --filter @daka/ontology-runtime run test"
+    "test:integration": "pnpm --filter @daka/ontology-runtime run test",
+    "test:ui": "vitest run --config vitest.ui.config.ts"
   },
   "dependencies": {
     "@daka/ontology-client": "workspace:^",
@@ -68,6 +69,7 @@
     "typescript-eslint": "8.59.3",
     "vinext": "1.0.0-beta.2",
     "vite": "8.0.13",
+    "vitest": "^3.2.4",
     "wrangler": "4.92.0"
   },
   "type": "module"
