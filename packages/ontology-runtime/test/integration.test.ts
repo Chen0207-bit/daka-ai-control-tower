@@ -13,6 +13,7 @@ import {
   listObjects,
   loadManifest,
   makeContext,
+  maskFactRecord,
   maskRecord,
   paymentCalendar,
   proposeFact,
@@ -342,5 +343,48 @@ describe.skipIf(!DB_URL)("runtime 集成（真实 PostgreSQL + RLS 角色）", (
     expect(pay).toBeDefined();
     expect(maskRecord(manifest, OUTSIDER, "Payment", pay!.data).transactionReference).toBe("***masked***");
     expect(maskRecord(manifest, FINANCE, "Payment", pay!.data).transactionReference).toBe("TXN-SECRET-PROJ-1");
+  });
+
+  it("事实敏感值遮罩（事实治理读路径）：与 GET /v1/facts 响应边界相同的 maskFactRecord 组合", async () => {
+    // 同一 subject 上的四条事实：敏感标量 / 限定 predicate / 非敏感标量 / 对象快照
+    const subjectId = d("000000000402");
+    const sensitive = await withTx(pool, STEWARD, (c) =>
+      proposeFact(c, STEWARD, manifest, releaseId, {
+        subjectType: "Party", subjectId, predicate: "registrationIdentifier", objectValue: "REG-SECRET-FACT-1",
+      }),
+    );
+    const qualified = await withTx(pool, STEWARD, (c) =>
+      proposeFact(c, STEWARD, manifest, releaseId, {
+        subjectType: "Party", subjectId, predicate: "Party.registrationIdentifier", objectValue: "REG-SECRET-FACT-2",
+      }),
+    );
+    const plain = await withTx(pool, STEWARD, (c) =>
+      proposeFact(c, STEWARD, manifest, releaseId, {
+        subjectType: "Party", subjectId, predicate: "legalName", objectValue: "集成相对方（演示推演）",
+      }),
+    );
+    const snapshot = await withTx(pool, STEWARD, (c) =>
+      proposeFact(c, STEWARD, manifest, releaseId, {
+        subjectType: "Party", subjectId, predicate: "Party.snapshot",
+        objectValue: { registrationIdentifier: "REG-SECRET-FACT-3", legalName: "集成相对方（演示推演）", note: "keep" },
+      }),
+    );
+
+    const execFacts = await withTx(pool, OUTSIDER, (c) => listFacts(c, OUTSIDER, { subjectId }));
+    const execById = new Map(execFacts.map((f) => [f.id, maskFactRecord(manifest, OUTSIDER, f)]));
+    expect(execById.get(sensitive.id)?.objectValue).toBe("***masked***");
+    expect(execById.get(qualified.id)?.objectValue).toBe("***masked***");
+    expect(execById.get(plain.id)?.objectValue).toBe("集成相对方（演示推演）");
+    const execSnap = execById.get(snapshot.id)?.objectValue as Record<string, unknown>;
+    expect(execSnap.registrationIdentifier).toBe("***masked***");
+    expect(execSnap.legalName).toBe("集成相对方（演示推演）");
+    expect(execSnap.note).toBe("keep");
+
+    // 授权角色见原值 → 同时证明数据库保存值未被遮罩改写
+    const stewardFacts = await withTx(pool, STEWARD, (c) => listFacts(c, STEWARD, { subjectId }));
+    const stewardById = new Map(stewardFacts.map((f) => [f.id, maskFactRecord(manifest, STEWARD, f)]));
+    expect(stewardById.get(sensitive.id)?.objectValue).toBe("REG-SECRET-FACT-1");
+    expect(stewardById.get(qualified.id)?.objectValue).toBe("REG-SECRET-FACT-2");
+    expect((stewardById.get(snapshot.id)?.objectValue as Record<string, unknown>).registrationIdentifier).toBe("REG-SECRET-FACT-3");
   });
 });

@@ -142,6 +142,48 @@ console.log(`E2E against ${BASE}`);
   ok("无读权限角色（financeOperator）整行 403（default deny）", asFin.status === 403, JSON.stringify(asFin.data));
 }
 
+// 2.7 事实敏感值遮罩：真实 API GET /v1/facts（同一 Fact，角色决定可见性；库值不变）
+{
+  const partyId = id("000000000501"); // 2.6 创建的含敏感字段 Party
+  const REGF = `E2E-FACT-REG-${RUN}`;
+  const evidence = "d0000000-0000-4000-8000-0000000000e2";
+  const fSensitive = await call("/v1/facts", {
+    method: "POST", roles: ["dataSteward"], actor: "e2e-steward",
+    body: { subjectType: "Party", subjectId: partyId, predicate: "registrationIdentifier", objectValue: REGF, evidenceAnchorId: evidence },
+  });
+  ok("提议敏感标量事实", fSensitive.status === 201, JSON.stringify(fSensitive.data));
+  const fPlain = await call("/v1/facts", {
+    method: "POST", roles: ["dataSteward"], actor: "e2e-steward",
+    body: { subjectType: "Party", subjectId: partyId, predicate: "legalName", objectValue: "E2E 相对方（演示推演）" },
+  });
+  ok("提议非敏感事实", fPlain.status === 201, JSON.stringify(fPlain.data));
+  const fSnap = await call("/v1/facts", {
+    method: "POST", roles: ["dataSteward"], actor: "e2e-steward",
+    body: { subjectType: "Party", subjectId: partyId, predicate: "Party.snapshot", objectValue: { registrationIdentifier: REGF, legalName: "E2E 相对方（演示推演）", note: "e2e" } },
+  });
+  ok("提议对象快照事实", fSnap.status === 201, JSON.stringify(fSnap.data));
+  const byId = (list, fid) => list.data?.items?.find((x) => x.id === fid);
+
+  const execFacts = await call(`/v1/facts?subjectId=${partyId}`, { roles: ["executiveViewer"], actor: "e2e-exec" });
+  ok("executiveViewer 读敏感事实 objectValue=***masked***",
+    execFacts.status === 200 && byId(execFacts, fSensitive.data?.id)?.objectValue === "***masked***",
+    JSON.stringify(byId(execFacts, fSensitive.data?.id)));
+  ok("executiveViewer 读非敏感事实原值不变",
+    byId(execFacts, fPlain.data?.id)?.objectValue === "E2E 相对方（演示推演）",
+    JSON.stringify(byId(execFacts, fPlain.data?.id)));
+  const execSnap = byId(execFacts, fSnap.data?.id)?.objectValue;
+  ok("executiveViewer 快照顶层敏感键遮罩、其余键保留",
+    execSnap?.registrationIdentifier === "***masked***" && execSnap?.legalName === "E2E 相对方（演示推演）" && execSnap?.note === "e2e",
+    JSON.stringify(execSnap));
+
+  const stewardFacts = await call(`/v1/facts?subjectId=${partyId}`, { roles: ["dataSteward"], actor: "e2e-steward" });
+  ok("dataSteward 读敏感事实原值（证明库值未被遮罩改写）",
+    byId(stewardFacts, fSensitive.data?.id)?.objectValue === REGF,
+    JSON.stringify(byId(stewardFacts, fSensitive.data?.id)));
+  ok("dataSteward 读快照原值",
+    byId(stewardFacts, fSnap.data?.id)?.objectValue?.registrationIdentifier === REGF);
+}
+
 // 3. 签名闭环：收货 → 分配 → 超额 422 → 桶余额
 {
   const e = await call("/v1/objects", {

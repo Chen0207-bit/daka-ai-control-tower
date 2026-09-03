@@ -2,6 +2,7 @@ import type pg from "pg";
 import type { ActorContext } from "./context";
 import { RUNTIME_ERRORS, RuntimeError } from "./errors";
 import type { RuntimeManifest } from "./manifest";
+import { MASKED_VALUE, maskedFields } from "./policy";
 import { writeAudit, writeOutbox } from "./repository";
 
 /**
@@ -189,4 +190,65 @@ export async function listFacts(
     validFrom: r.valid_from, validTo: r.valid_to, recordedAt: r.recorded_at,
     supersededAt: r.superseded_at, assertedBy: r.asserted_by,
   }));
+}
+
+/**
+ * 事实响应遮罩（GET /v1/facts 读路径边界）。
+ *
+ * predicate → subjectType 属性的映射约定（见 ontology/spec/v1.md §9.2）：
+ * - `propertyName`（如 `registrationIdentifier`），或限定形式 `SubjectType.propertyName`
+ *   （如 `Party.registrationIdentifier`，前缀必须等于 subjectType，且只支持一层限定）。
+ * - 其他形态视为未映射，不做猜测。
+ *
+ * 遮罩规则（判定全部来自 compiled manifest/policy，见 maskedFields）：
+ * - objectValue 为标量/数组：predicate 映射到的属性对当前 actor 被遮罩时，精确返回 MASKED_VALUE。
+ * - objectValue 为对象快照：仅对顶层且可识别为 subjectType 属性的键应用与 maskRecord 相同的语义；
+ *   未知 predicate 与未知对象键不猜测映射，原样返回。
+ * 只在响应边界生效：不改变数据库存储值、审核状态、证据引用与审计链。
+ */
+export function factPredicateProperty(
+  manifest: RuntimeManifest,
+  subjectType: string,
+  predicate: string,
+): string | undefined {
+  const t = manifest.objectTypes[subjectType];
+  if (!t) return undefined;
+  let name = predicate;
+  const dot = predicate.indexOf(".");
+  if (dot >= 0) {
+    if (predicate.slice(0, dot) !== subjectType) return undefined;
+    name = predicate.slice(dot + 1);
+    if (name.includes(".") || name.length === 0) return undefined;
+  }
+  return t.properties[name] ? name : undefined;
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+export function maskFactRecord(
+  manifest: RuntimeManifest,
+  ctx: Pick<ActorContext, "roles">,
+  fact: FactRecord,
+): FactRecord {
+  const masked = maskedFields(manifest, ctx, fact.subjectType);
+  if (masked.size === 0) return fact;
+  const v = fact.objectValue;
+  if (isPlainObject(v)) {
+    let changed = false;
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v)) {
+      if (masked.has(k)) {
+        out[k] = MASKED_VALUE;
+        changed = true;
+      } else {
+        out[k] = val;
+      }
+    }
+    return changed ? { ...fact, objectValue: out } : fact;
+  }
+  const prop = factPredicateProperty(manifest, fact.subjectType, fact.predicate);
+  if (prop && masked.has(prop)) return { ...fact, objectValue: MASKED_VALUE };
+  return fact;
 }

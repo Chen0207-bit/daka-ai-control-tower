@@ -21,6 +21,7 @@ import {
   listLinks,
   listObjects,
   marketRecommendation,
+  maskFactRecord,
   maskRecord,
   materializeFindings,
   paymentCalendar,
@@ -231,7 +232,9 @@ export async function handleOntologyApi(request: Request, env: OntologyEnv): Pro
           subjectId: url.searchParams.get("subjectId") ?? undefined,
         }),
       );
-      return json({ items });
+      // 事实值遮罩在响应边界逐条生效（subjectType+predicate → compiled manifest 字段级 policy）；
+      // 只影响 JSON 响应，不改变数据库存储值/审核状态/证据引用/审计链
+      return json({ items: items.map((f) => maskFactRecord(manifest, ctx, f)) });
     }
 
     if (path === "/v1/facts" && request.method === "POST") {

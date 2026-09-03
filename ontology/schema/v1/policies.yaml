@@ -89,6 +89,22 @@ policies:
     fields: ["*"]
     description: 数据管家治理全部事实
 
+  dataStewardSensitiveRead:
+    effect: allow
+    roles: [dataSteward]
+    resources: [Party, Talent]
+    actions: [read]
+    fields: [registrationIdentifier, identityIdentifier]
+    description: 数据管家显式解除 highly_confidential 默认遮罩（通配 allow 不解遮罩，须显式列字段）
+
+  legalPartySensitiveRead:
+    effect: allow
+    roles: [legalOperator]
+    resources: [Party]
+    actions: [read]
+    fields: [registrationIdentifier]
+    description: 法务录入/核对合同相对方时需见注册号原值（显式解除 Party.registrationIdentifier 默认遮罩）
+
   factPropose:
     effect: allow
     roles: [systemAgent, dataSteward]

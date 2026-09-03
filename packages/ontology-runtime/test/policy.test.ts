@@ -5,11 +5,16 @@ import {
   authorizeLinkCreate,
   authorizeLinkRead,
   evaluatePolicy,
+  factPredicateProperty,
   loadManifest,
   makeContext,
+  MASKED_VALUE,
+  maskFactRecord,
   maskedFields,
   maskRecord,
   type ActorContext,
+  type FactRecord,
+  type RuntimeManifest,
 } from "../src/index";
 
 /**
@@ -125,5 +130,108 @@ describe("字段级遮罩（maskRecord，compiled manifest 驱动）", () => {
     expect(maskRecord(manifest, role(["executiveViewer"]), "Talent", talent).identityIdentifier).toBe("***masked***");
     const contract = { id: "c1", title: "x" };
     expect(maskRecord(manifest, role(["executiveViewer"]), "Contract", contract)).toEqual(contract);
+  });
+
+  it("P2-3 回归：通配 fields:[*] 的 allow 不解除 highly_confidential 默认遮罩，须显式列字段", () => {
+    // 合成 manifest：角色只有整资源读授权（fields:["*"]），无任何显式字段 allow
+    const mini = {
+      objectTypes: { Widget: { properties: { name: {}, secret: { security: "highly_confidential" } } } },
+      policies: {
+        readAll: { effect: "allow", roles: ["r1"], resources: ["*"], actions: ["read"], fields: ["*"] },
+      },
+    } as unknown as RuntimeManifest;
+    const masked = maskedFields(mini, role(["r1"]), "Widget");
+    expect(masked.has("secret")).toBe(true);
+    expect(masked.has("name")).toBe(false);
+    // 显式列出字段的 allow 才解除默认遮罩
+    const mini2 = {
+      ...mini,
+      policies: {
+        ...mini.policies,
+        explicitRead: { effect: "allow", roles: ["r1"], resources: ["Widget"], actions: ["read"], fields: ["secret"] },
+      },
+    } as unknown as RuntimeManifest;
+    expect(maskedFields(mini2, role(["r1"]), "Widget").has("secret")).toBe(false);
+    // 真实 manifest：dataSteward/legalOperator 经显式字段 allow 见原值；executiveViewer 仍遮罩
+    expect(maskedFields(manifest, role(["dataSteward"]), "Party").has("registrationIdentifier")).toBe(false);
+    expect(maskedFields(manifest, role(["legalOperator"]), "Party").has("registrationIdentifier")).toBe(false);
+    expect(maskedFields(manifest, role(["executiveViewer"]), "Party").has("registrationIdentifier")).toBe(true);
+  });
+});
+
+describe("事实响应遮罩（maskFactRecord，GET /v1/facts 读路径）", () => {
+  const fact = (over: Partial<FactRecord>): FactRecord => ({
+    id: "f1",
+    subjectType: "Party",
+    subjectId: "p1",
+    predicate: "registrationIdentifier",
+    objectValue: "REG-SECRET-F1",
+    status: "proposed",
+    evidenceAnchorId: null,
+    validFrom: null,
+    validTo: null,
+    recordedAt: "2026-09-03T00:00:00Z",
+    supersededAt: null,
+    assertedBy: "sys",
+    ...over,
+  });
+
+  it("predicate 映射约定：属性名/限定形式命中，其余不映射", () => {
+    expect(factPredicateProperty(manifest, "Party", "registrationIdentifier")).toBe("registrationIdentifier");
+    expect(factPredicateProperty(manifest, "Party", "Party.registrationIdentifier")).toBe("registrationIdentifier");
+    // 限定前缀必须等于 subjectType；多层限定/未知属性/未知类型均不映射（不猜测）
+    expect(factPredicateProperty(manifest, "Party", "Talent.registrationIdentifier")).toBeUndefined();
+    expect(factPredicateProperty(manifest, "Party", "Party.a.b")).toBeUndefined();
+    expect(factPredicateProperty(manifest, "Party", "notAProperty")).toBeUndefined();
+    expect(factPredicateProperty(manifest, "NoSuchType", "registrationIdentifier")).toBeUndefined();
+  });
+
+  it("executiveViewer：敏感标量事实 objectValue 精确返回 ***masked***", () => {
+    const masked = maskFactRecord(manifest, role(["executiveViewer"]), fact({}));
+    expect(masked.objectValue).toBe(MASKED_VALUE);
+    expect(MASKED_VALUE).toBe("***masked***");
+    // 限定 predicate 同样遮罩
+    expect(
+      maskFactRecord(manifest, role(["executiveViewer"]), fact({ predicate: "Party.registrationIdentifier" })).objectValue,
+    ).toBe(MASKED_VALUE);
+  });
+
+  it("授权角色（dataSteward/legalOperator）看到原值；未被遮罩的普通事实保持原样", () => {
+    for (const r of ["dataSteward", "legalOperator"]) {
+      expect(maskFactRecord(manifest, role([r]), fact({})).objectValue, r).toBe("REG-SECRET-F1");
+    }
+    const plain = fact({ predicate: "legalName", objectValue: "演示相对方（演示推演）" });
+    expect(maskFactRecord(manifest, role(["executiveViewer"]), plain).objectValue).toBe("演示相对方（演示推演）");
+  });
+
+  it("不猜测映射：限定前缀不符/未知 predicate 的事实原样返回", () => {
+    const mismatched = fact({ predicate: "Talent.registrationIdentifier" });
+    expect(maskFactRecord(manifest, role(["executiveViewer"]), mismatched).objectValue).toBe("REG-SECRET-F1");
+    const unknown = fact({ predicate: "e2e.predicate", objectValue: { v: 1 } });
+    expect(maskFactRecord(manifest, role(["executiveViewer"]), unknown).objectValue).toEqual({ v: 1 });
+  });
+
+  it("对象快照：顶层可识别为 subjectType 属性的敏感键遮罩，未知键与嵌套键原样", () => {
+    const snap = fact({
+      predicate: "Party.snapshot",
+      objectValue: {
+        registrationIdentifier: "REG-SECRET-F1",
+        legalName: "演示相对方（演示推演）",
+        unknownKey: "keep-me",
+        nested: { registrationIdentifier: "nested-not-top-level" },
+      },
+    });
+    const masked = maskFactRecord(manifest, role(["executiveViewer"]), snap);
+    const v = masked.objectValue as Record<string, unknown>;
+    expect(v.registrationIdentifier).toBe(MASKED_VALUE);
+    expect(v.legalName).toBe("演示相对方（演示推演）");
+    expect(v.unknownKey).toBe("keep-me");
+    expect(v.nested).toEqual({ registrationIdentifier: "nested-not-top-level" });
+    // 原记录不被改写（响应边界只读转换）
+    expect((snap.objectValue as Record<string, unknown>).registrationIdentifier).toBe("REG-SECRET-F1");
+  });
+
+  it("default deny：无任何 Party 读权限的角色（financeOperator）同样遮罩敏感事实值", () => {
+    expect(maskFactRecord(manifest, role(["financeOperator"]), fact({})).objectValue).toBe(MASKED_VALUE);
   });
 });

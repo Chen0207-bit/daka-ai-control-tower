@@ -12,6 +12,9 @@ export interface PolicyDecision {
   policyId?: string;
 }
 
+/** 遮罩哨兵值：被遮罩字段在 JSON 响应边界精确返回该字符串（数据库存储值不变）。 */
+export const MASKED_VALUE = "***masked***";
+
 function matches(list: string[], value: string): boolean {
   return list.includes("*") || list.includes(value);
 }
@@ -59,14 +62,16 @@ export function maskedFields(
   for (const [name, prop] of Object.entries(t.properties)) {
     if (prop.security === "highly_confidential") masked.add(name);
   }
-  // allow 覆盖：若某 policy 显式允许这些角色读该字段，则取消默认遮罩
+  // allow 覆盖：只有显式列出字段名的 allow policy 才解除该字段的默认遮罩。
+  // 通配 fields:["*"] 的 allow 只授予行级读取（由 evaluatePolicy 判定），不解除
+  // highly_confidential 默认遮罩 —— 否则任何整资源读授权都会顺带暴露未来新增的
+  // 敏感字段（DeepSeek 复核 P2-3）。授权角色要见原值，须在 policy 中显式列字段。
   for (const [, p] of Object.entries(manifest.policies)) {
     if (p.effect !== "allow") continue;
     if (!p.roles.some((r) => ctx.roles.includes(r))) continue;
     if (!matches(p.resources, objectType)) continue;
     if (!(p.actions.includes("read") || p.actions.includes("*"))) continue;
-    if (p.fields.includes("*")) masked.clear();
-    else for (const f of p.fields) masked.delete(f);
+    for (const f of p.fields) if (f !== "*") masked.delete(f);
   }
   for (const [id, p] of Object.entries(manifest.policies)) {
     if (p.effect !== "deny") continue;
@@ -93,7 +98,7 @@ export function maskRecord(
   if (masked.size === 0) return data;
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {
-    out[k] = masked.has(k) ? "***masked***" : v;
+    out[k] = masked.has(k) ? MASKED_VALUE : v;
   }
   return out;
 }

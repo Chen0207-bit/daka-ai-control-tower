@@ -472,7 +472,7 @@
       }
     }
   },
-  "fingerprint": "60b5e17949a939fc642e95355e64b1c34d82103fc057a0e70206f716751e027c",
+  "fingerprint": "24143898cdff7701a462463154e359ba76ab330916fc3b3bde805bb6c3d260b8",
   "interfaces": {
     "IPAsset": {
       "description": "可被授权和商业化的长期 IP 资产接口",
@@ -2825,6 +2825,24 @@
         "dataSteward"
       ]
     },
+    "dataStewardSensitiveRead": {
+      "actions": [
+        "read"
+      ],
+      "description": "数据管家显式解除 highly_confidential 默认遮罩（通配 allow 不解遮罩，须显式列字段）",
+      "effect": "allow",
+      "fields": [
+        "identityIdentifier",
+        "registrationIdentifier"
+      ],
+      "resources": [
+        "Party",
+        "Talent"
+      ],
+      "roles": [
+        "dataSteward"
+      ]
+    },
     "executiveAggregatedRead": {
       "actions": [
         "read"
@@ -2942,6 +2960,22 @@
         "Obligation",
         "Party",
         "RightsGrant"
+      ],
+      "roles": [
+        "legalOperator"
+      ]
+    },
+    "legalPartySensitiveRead": {
+      "actions": [
+        "read"
+      ],
+      "description": "法务录入/核对合同相对方时需见注册号原值（显式解除 Party.registrationIdentifier 默认遮罩）",
+      "effect": "allow",
+      "fields": [
+        "registrationIdentifier"
+      ],
+      "resources": [
+        "Party"
       ],
       "roles": [
         "legalOperator"
