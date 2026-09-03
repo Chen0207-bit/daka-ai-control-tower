@@ -29,6 +29,8 @@ import {
   proposeFact,
   queryTraces,
   rejectFact,
+  runQuery,
+  loadGraph,
   runRules,
   signatureOverview,
   supersedeFact,
@@ -58,6 +60,8 @@ assertSupported(manifest);
 export interface OntologyEnv {
   HYPERDRIVE?: { connectionString: string };
   DATABASE_URL?: string; // 本地 dev 直连接口（可选）
+  GLM_API_KEY?: string; // 可选：自然语言查询的 GLM 路由（无则本地规则路由）
+  GLM_MODEL?: string;
 }
 
 const jsonHeaders = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
@@ -323,6 +327,22 @@ export async function handleOntologyApi(request: Request, env: OntologyEnv): Pro
       const stored = await withTx(pool, ctx, (c) => getTrace(c, ctx, traceGet[1]));
       if (!stored) throw new RuntimeError(RUNTIME_ERRORS.NOT_FOUND, `trace ${traceGet[1]} 不存在`);
       return json(stored);
+    }
+
+    // 自然语言查询（只读、可观察）：intent/time/entity/plan/query/rules/validate/answer 全链 trace + 触及子图
+    if (path === "/v1/query" && request.method === "POST") {
+      const body = await readJson(request);
+      const question = String(body.question ?? "").trim();
+      if (!question) throw new RuntimeError(RUNTIME_ERRORS.VALIDATION, "缺 question");
+      if (question.length > 500) throw new RuntimeError(RUNTIME_ERRORS.VALIDATION, "问题过长（≤500 字）");
+      const trace = await runQuery(pool, ctx, question, { glmKey: env.GLM_API_KEY, glmModel: env.GLM_MODEL });
+      return json(trace);
+    }
+
+    // 本体图（对象 + 关系），供查询工作台高亮触及对象
+    if (path === "/v1/graph" && request.method === "GET") {
+      const graph = await loadGraph(pool, ctx);
+      return json(graph);
     }
 
     const proj = /^\/v1\/projections\/([a-z][A-Za-z0-9]*)$/.exec(path);
