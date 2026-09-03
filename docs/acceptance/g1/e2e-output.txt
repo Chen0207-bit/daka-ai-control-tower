@@ -1,0 +1,70 @@
+E2E against http://localhost:3000
+  ✓ health live
+  ✓ health ready + 指纹
+  ✓ 创建 Contract
+  ✓ 提交 proposed fact
+  ✓ 越权提议事实被拒 403
+  ✓ systemAgent 确认事实被拒 403
+  ✓ executiveViewer 确认事实被拒 403
+  ✓ FactAssertion 禁经对象路由创建 400
+  ✓ 人工确认 fact → verified
+  ✓ verified 可查
+  ✓ 创建 PaymentSchedule
+  ✓ 越权付款被拒 403
+  ✓ 财务付款成功
+  ✓ 幂等重放同 runId 不产生重复 effect
+  ✓ 投影反映已付
+  ✓ 创建 PaymentSchedule（trace 段）
+  ✓ plan 200 + status=planned + committed=false + runId=null
+  ✓ plan 内嵌 trace.mode=plan 且 traceId 存在
+  ✓ plan 前后 audit 零新增
+  ✓ plan 后投影不变（unsettled 仍为 900）
+  ✓ plan 写集为空/skipped
+  ✓ plan trace 持久化可重开（刷新可复现）
+  ✓ 越权 403 + 内嵌 trace.status=denied + committed=false
+  ✓ denied 失败定位在 policy span
+  ✓ denied 后 audit 零新增
+  ✓ denied trace 可重开且状态一致
+  ✓ 错误币种 422 + trace.status=precondition_failed + committed=false
+  ✓ precondition span 定位失败点
+  ✓ 前置失败后 audit 零新增
+  ✓ 前置失败后投影不变
+  ✓ execute 200 + trace.status=completed + committed=true
+  ✓ execute traceId 来自内嵌 trace
+  ✓ 写集含业务对象/审计/outbox 写
+  ✓ 成功后投影反映已结清
+  ✓ 成功 trace 刷新后可重开（spans 完整）
+  ✓ correlationId 关联 Action/Audit
+  ✓ 幂等重放 replayed + 同 runId + 不重复结清
+  ✓ 重放后 settled 不翻倍
+  ✓ trace 列表按 correlationId 关联
+  ✓ 越权创建关系被拒 403
+  ✓ 合法创建关系 201
+  ✓ 创建含敏感字段的 Party
+  ✓ executiveViewer 可读该行但 registrationIdentifier=***masked***
+  ✓ executiveViewer 仍见非敏感字段原值
+  ✓ legalOperator 见 registrationIdentifier 原值
+  ✓ dataSteward 见 registrationIdentifier 原值
+  ✓ 无读权限角色（financeOperator）整行 403（default deny）
+  ✓ 提议敏感标量事实
+  ✓ 提议非敏感事实
+  ✓ 提议对象快照事实
+  ✓ executiveViewer 读敏感事实 objectValue=***masked***
+  ✓ executiveViewer 读非敏感事实原值不变
+  ✓ executiveViewer 快照顶层敏感键遮罩、其余键保留
+  ✓ dataSteward 读敏感事实原值（证明库值未被遮罩改写）
+  ✓ dataSteward 读快照原值
+  ✓ 创建 SignatureEntitlement
+  ✓ 批次收货
+  ✓ 分配 15/20 成功
+  ✓ 超额分配 5+1 被 422 阻断
+  ✓ 桶余额守恒 available=5
+  ✓ 创建 MarketObservation
+  ✓ 创建 ReleaseRecommendation(suggested)
+  ✓ 人工评审批准
+  ✓ 投影反映评审结果
+  ✓ 审计含 E2E 动作
+  ✓ 指标端点可用
+  ✓ 数据质量报告
+
+结果: 67 通过, 0 失败

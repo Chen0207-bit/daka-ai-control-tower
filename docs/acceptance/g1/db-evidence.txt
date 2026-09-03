@@ -1,0 +1,60 @@
+== schema_migrations ==
+      version       |          applied_at           
+--------------------+-------------------------------
+ 0001_init          | 2026-09-03 14:51:45.770739+08
+ 0002_fact_version  | 2026-09-03 14:51:45.829511+08
+ 0003_action_traces | 2026-09-03 14:51:45.830939+08
+(3 �м�¼)
+
+== action_traces 按状态/模式 ==
+  mode   |       status        | committed | count 
+---------+---------------------+-----------+-------
+ execute | completed           | t         |     6
+ execute | denied              | f         |     3
+ execute | precondition_failed | f         |     2
+ execute | replayed            | t         |     2
+ plan    | planned             | f         |     2
+(5 �м�¼)
+
+== plan 模式 trace 详情（零业务写入证据）==
+               trace_id               | mode | status  | committed | run_id 
+--------------------------------------+------+---------+-----------+--------
+ 8a376f78-1705-41df-931e-410582546126 | plan | planned | f         | 
+ 98ba386e-492b-4c49-af09-2ef083f26dba | plan | planned | f         | 
+(2 �м�¼)
+
+== denied trace（越权）==
+               trace_id               | status |      error_code      | committed 
+--------------------------------------+--------+----------------------+-----------
+ d339133a-84d0-4e99-8181-6e82e2e55e47 | denied | ONTO-403-POLICY-DENY | f
+ c9ec6d63-65c0-47c9-a87f-bc6e387648f8 | denied | ONTO-403-POLICY-DENY | f
+ d82cdb84-505d-4eea-bb01-f53ce29cd373 | denied | ONTO-403-POLICY-DENY | f
+(3 �м�¼)
+
+== precondition_failed trace ==
+               trace_id               |       status        |      error_code       | committed 
+--------------------------------------+---------------------+-----------------------+-----------
+ 8aacf2f5-d414-4483-b56f-43d6baf9cac5 | precondition_failed | ONTO-422-PRECONDITION | f
+ c08a2543-8e20-4112-a418-be7761fa4edd | precondition_failed | ONTO-422-PRECONDITION | f
+(2 �м�¼)
+
+== action_runs ==
+         action_type         |  status   | count 
+-----------------------------+-----------+-------
+ allocateSignatures          | completed |     2
+ receiveSignatureLot         | completed |     2
+ recordPayment               | completed |     5
+ reviewReleaseRecommendation | completed |     1
+(4 �м�¼)
+
+== audit_events / outbox_events 总量 ==
+ audit | outbox | traces | runs 
+-------+--------+--------+------
+   119 |    118 |     15 |   10
+(1 �м�¼)
+
+== 幂等：e2e-pay-t 同 key 仅 1 条 action_run ==
+ idempotency_key | count 
+-----------------+-------
+(0 �м�¼)
+
