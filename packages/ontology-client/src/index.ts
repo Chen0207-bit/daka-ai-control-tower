@@ -3,6 +3,10 @@
  * 演示部署的 actor 通过请求头声明；生产接入时由 SSO 会话替换。
  */
 
+import type { ExecuteActionResponse, ExecutionTrace, StoredTrace, TraceMode, TraceSummary } from "./trace";
+
+export * from "./trace";
+
 export interface ClientOptions {
   baseUrl?: string;
   actorId?: string;
@@ -17,7 +21,12 @@ export interface ApiError {
 }
 
 export class OntologyApiError extends Error {
-  constructor(public readonly status: number, public readonly apiError: ApiError) {
+  /** 失败链同样携带内嵌 trace（denied/precondition_failed 等），供 Workbench 展示真实失败证据 */
+  constructor(
+    public readonly status: number,
+    public readonly apiError: ApiError,
+    public readonly trace?: ExecutionTrace,
+  ) {
     super(`${apiError.code}: ${apiError.message}`);
   }
 }
@@ -96,12 +105,6 @@ export interface AuditEventView {
   correlation_id: string;
 }
 
-export interface ExecuteResultView {
-  runId: string;
-  status: "completed" | "replayed";
-  result: Record<string, unknown>;
-}
-
 export function createOntologyClient(opts: ClientOptions = {}) {
   const base = opts.baseUrl ?? "";
   const headers = (): Record<string, string> => ({
@@ -117,7 +120,7 @@ export function createOntologyClient(opts: ClientOptions = {}) {
     const body: unknown = await res.json();
     if (!res.ok) {
       const err = (body as { error?: ApiError }).error ?? { code: String(res.status), message: "请求失败" };
-      throw new OntologyApiError(res.status, err);
+      throw new OntologyApiError(res.status, err, (body as { trace?: ExecutionTrace }).trace);
     }
     return body as T;
   }
@@ -134,8 +137,36 @@ export function createOntologyClient(opts: ClientOptions = {}) {
       call(`/v1/facts/${id}/verify`, { method: "POST", body: JSON.stringify({ reviewComment }) }),
     rejectFact: (id: string, rejectionReason: string) =>
       call(`/v1/facts/${id}/reject`, { method: "POST", body: JSON.stringify({ rejectionReason }) }),
-    executeAction: (actionId: string, req: { targetId: string; input: Record<string, unknown>; idempotencyKey: string; expectedVersion?: number }) =>
-      call<ExecuteResultView>(`/v1/actions/${actionId}/execute`, { method: "POST", body: JSON.stringify(req) }),
+    /**
+     * 执行 Action。mode="plan" 为 dry-run（全链路校验、零业务写入）。
+     * 契约：成功与失败响应都内嵌 trace；traceId 只从 trace.traceId 读取。
+     * 响应缺少内嵌 trace 视为契约违规，抛出 OntologyApiError（不允许前端静默降级）。
+     */
+    executeAction: async (actionId: string, req: { targetId: string; input: Record<string, unknown>; idempotencyKey: string; expectedVersion?: number; mode?: TraceMode }) => {
+      try {
+        const body = await call<ExecuteActionResponse & { trace?: ExecutionTrace }>(`/v1/actions/${actionId}/execute`, { method: "POST", body: JSON.stringify(req) });
+        if (!body.trace || typeof body.trace.traceId !== "string") {
+          throw new OntologyApiError(500, { code: "ONTO-CONTRACT-TRACE-MISSING", message: "execute 响应缺少内嵌 trace（契约违规）" });
+        }
+        return body as ExecuteActionResponse;
+      } catch (err) {
+        // 失败响应（403/422/…）必须带内嵌 trace 才算符合契约；否则如实报契约违规
+        if (err instanceof OntologyApiError && err.status !== 500 && err.trace === undefined) {
+          throw new OntologyApiError(err.status, { code: "ONTO-CONTRACT-TRACE-MISSING", message: `失败响应缺少内嵌 trace（契约违规）：${err.apiError.code}` });
+        }
+        throw err;
+      }
+    },
+    getTrace: (traceId: string) => call<StoredTrace>(`/v1/traces/${encodeURIComponent(traceId)}`),
+    listTraces: (q: { correlationId?: string; actionId?: string; status?: string; limit?: number } = {}) => {
+      const params = new URLSearchParams();
+      if (q.correlationId) params.set("correlationId", q.correlationId);
+      if (q.actionId) params.set("actionId", q.actionId);
+      if (q.status) params.set("status", q.status);
+      if (q.limit) params.set("limit", String(q.limit));
+      const qs = params.toString();
+      return call<{ items: TraceSummary[] }>(`/v1/traces${qs ? `?${qs}` : ""}`);
+    },
     audit: (limit = 50) => call<{ items: AuditEventView[] }>(`/v1/audit?limit=${limit}`),
     health: () => call<{ status: string; fingerprint?: string }>("/health/ready"),
   };

@@ -110,7 +110,14 @@ function rowsToIps(rows: ImportRow[], limit = 17): typeof baseIps {
 }
 
 export default function Home() {
-  const [view, setView] = useState<View>("actions");
+  const [view, setView] = useState<View>(() => {
+    // 支持 ?view=<id> 直达指定视图（验收截图、trace 重开链接使用）
+    if (typeof window !== "undefined") {
+      const v = new URLSearchParams(window.location.search).get("view");
+      if (v && nav.some((n) => n.id === v)) return v as View;
+    }
+    return "actions";
+  });
   const [collapsed, setCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
